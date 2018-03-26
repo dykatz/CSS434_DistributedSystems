@@ -1,3 +1,3 @@
 .DS_Store
-.jar
+*.jar
 build/
