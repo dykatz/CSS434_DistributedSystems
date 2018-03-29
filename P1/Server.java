@@ -10,7 +10,6 @@ class ClientRef
 {
 	public List<ClientRef> others;
 	public AsynchronousSocketChannel channel;
-	public String name;
 	public ByteBuffer buffer;
 
 	public ClientRef(List<ClientRef> oth, AsynchronousSocketChannel ch)
@@ -45,9 +44,6 @@ class ClientRef
 
 	void handle(Message msg)
 	{
-		if (msg.type == Message.Type.NAME)
-			name = msg.text;
-
 		for (ClientRef ref : others)
 			ref.send(msg);
 	}
@@ -86,7 +82,12 @@ public class Server
 			System.err.printf("err: server broke: %s\n", e);
 		}
 
-		Thread.sleep(Long.MAX_VALUE);
+		try {
+			for (;;)
+				Thread.sleep(Long.MAX_VALUE);
+		} catch (InterruptedException e) {
+			System.err.printf("err: wait did not break cleanly: %s\n", e);
+		}
 	}
 
 	static void serve(int port) throws IOException

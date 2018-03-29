@@ -1,6 +1,10 @@
 package P1;
 
+import java.util.*;
 import java.net.*;
+import java.nio.*;
+import java.nio.channels.*;
+import java.io.*;
 
 public class Client
 {
