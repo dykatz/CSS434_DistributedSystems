@@ -2,14 +2,14 @@ package P1;
 
 import java.net.*;
 
-class Client
+public class Client
 {
 	public static void main(String[] args)
 	{
 		Socket s = null;
 
-		if (args.length != 2) {
-			System.err.println("err: bad args: [host] [port]");
+		if (args.length != 3) {
+			System.err.println("err: bad args: [host] [port] [nick]");
 			System.exit(1);
 		}
 
