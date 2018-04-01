@@ -23,8 +23,7 @@ class ClientRef
 			public void completed(Integer len, Void att)
 			{
 				try {
-					ByteArrayInputStream bais = new ByteArrayInputStream(
-						buffer.array(), 0, buffer.limit());
+					ByteArrayInputStream bais = new ByteArrayInputStream(buffer.array(), 0, buffer.limit());
 					ObjectInputStream ois = new ObjectInputStream(bais);
 					handle((Message)ois.readObject());
 				} catch (Exception e) {
@@ -93,15 +92,15 @@ public class Server
 	static void serve(int port) throws IOException
 	{
 		InetSocketAddress host = new InetSocketAddress(port);
-		AsynchronousServerSocketChannel srv =
-			AsynchronousServerSocketChannel.open().bind(host);
+		AsynchronousServerSocketChannel srv = AsynchronousServerSocketChannel.open().bind(host);
 		List<ClientRef> clients = new ArrayList<ClientRef>();
 
 		srv.accept(null, new CompletionHandler<AsynchronousSocketChannel,Void>()
 		{
 			public void completed(AsynchronousSocketChannel ch, Void att)
 			{
-				new ClientRef(clients, ch);
+				ClientRef cl = new ClientRef(clients, ch);
+				clients.add(cl);
 				srv.accept(null, this);
 			}
 
