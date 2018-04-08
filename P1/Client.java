@@ -32,8 +32,10 @@ class UserInputRunnable extends Thread
 					String str = line.substring(1, loc);
 					msg.text = line.substring(loc + 1);
 
-					if (str.equals("name") || str.equals("nick"))
+					if (str.equals("name") || str.equals("nick")) {
 						msg.type = Message.Type.NICK;
+						name = msg.text;
+					}
 				}
 			} else {
 				msg.type = Message.Type.MSG;

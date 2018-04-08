@@ -13,6 +13,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+package Lab1a;
+
 import java.net.*;
 import java.io.*;
 
