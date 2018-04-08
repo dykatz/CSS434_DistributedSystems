@@ -1,113 +1,66 @@
 package P1;
 
-import java.util.*;
+import java.io.*;
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
-import java.io.*;
-
-class ClientRef
-{
-	public List<ClientRef> others;
-	public AsynchronousSocketChannel channel;
-	public ByteBuffer buffer;
-
-	public ClientRef(List<ClientRef> oth, AsynchronousSocketChannel ch)
-	{
-		others = oth;
-		channel = ch;
-		buffer = ByteBuffer.allocate(256);
-
-		channel.read(buffer, null, new CompletionHandler<Integer,Void>()
-		{
-			public void completed(Integer len, Void att)
-			{
-				try {
-					ByteArrayInputStream bais = new ByteArrayInputStream(buffer.array(), 0, buffer.limit());
-					ObjectInputStream ois = new ObjectInputStream(bais);
-					handle((Message)ois.readObject());
-				} catch (Exception e) {
-					System.err.printf("err: failed to recv message: %s\n", e);
-				}
-
-				buffer.clear();
-				channel.read(buffer, null, this);
-			}
-
-			public void failed(Throwable exc, Void att)
-			{
-				System.err.println(exc);
-			}
-		});
-	}
-
-	void handle(Message msg)
-	{
-		for (ClientRef ref : others)
-			ref.send(msg);
-	}
-
-	void send(Message msg)
-	{
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			ObjectOutputStream oos = new ObjectOutputStream(baos);
-			oos.writeObject(msg);
-			oos.close();
-			ByteBuffer bb = ByteBuffer.wrap(baos.toByteArray());
-
-			while (bb.hasRemaining())
-				channel.write(bb);
-		} catch (IOException e) {
-			System.err.printf("err: failed to send message: %s\n", e);
-		}
-	}
-}
+import java.util.*;
 
 public class Server
 {
-	public static void main(String[] args)
+	public static void main(String args[]) throws Exception
 	{
 		if (args.length != 1) {
-			System.err.println("err: 1 arg required: [port]");
+			System.err.println("err: bad args: [port]");
 			System.exit(1);
 		}
 
-		int port = Integer.parseInt(args[0]);
+		Selector selector = Selector.open();
 
-		try {
-			serve(port);
-		} catch (IOException e) {
-			System.err.printf("err: server broke: %s\n", e);
-		}
+		ServerSocketChannel server = ServerSocketChannel.open();
+		server.socket().bind(new InetSocketAddress(Integer.parseInt(args[0])));
+		server.configureBlocking(false);
+		server.register(selector, SelectionKey.OP_ACCEPT);
 
-		try {
-			for (;;)
-				Thread.sleep(Long.MAX_VALUE);
-		} catch (InterruptedException e) {
-			System.err.printf("err: wait did not break cleanly: %s\n", e);
-		}
-	}
+		HashMap<SelectionKey, String> names = new HashMap<SelectionKey, String>();
+		HashSet<ObjectOutputStream> outputs = new HashSet<ObjectOutputStream>();
 
-	static void serve(int port) throws IOException
-	{
-		InetSocketAddress host = new InetSocketAddress(port);
-		AsynchronousServerSocketChannel srv = AsynchronousServerSocketChannel.open().bind(host);
-		List<ClientRef> clients = new ArrayList<ClientRef>();
+		for (;;) {
+			int ready_channels = selector.select();
 
-		srv.accept(null, new CompletionHandler<AsynchronousSocketChannel,Void>()
-		{
-			public void completed(AsynchronousSocketChannel ch, Void att)
-			{
-				ClientRef cl = new ClientRef(clients, ch);
-				clients.add(cl);
-				srv.accept(null, this);
+			if (ready_channels < 1)
+				continue;
+
+			Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
+
+			while (keys.hasNext()) {
+				SelectionKey key = keys.next();
+
+				if (key.isAcceptable()) {
+					SocketChannel client = server.accept();
+					client.configureBlocking(false);
+
+					SelectionKey newkey = client.register(selector, SelectionKey.OP_READ);
+					ObjectOutputStream newoutput = new ObjectOutputStream(client.socket().getOutputStream());
+					ObjectInputStream newinput = new ObjectInputStream(client.socket().getInputStream());
+
+					newkey.attach((Object)newinput);
+					outputs.add(newoutput);
+				} else if (key.isReadable()) {
+					Message msg = (Message)(((ObjectInputStream)key.attachment()).readObject());
+
+					if (msg == null)
+						continue;
+
+					msg.sender = names.getOrDefault(key, "");
+
+					if (msg.type == Message.Type.NICK)
+						names.put(key, msg.text);
+
+					for (ObjectOutputStream output : outputs)
+						output.writeObject((Object)msg);
+				}
 			}
-
-			public void failed(Throwable exc, Void att)
-			{
-				System.err.println(exc);
-			}
-		});
+		}
 	}
 }
