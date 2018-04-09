@@ -17,11 +17,84 @@ package P1;
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 public class Causal
 {
+	private static class Connection
+	{
+		public Socket socket;
+
+		public Connection(Socket _socket)
+		{
+			socket = _socket;
+		}
+
+		public void close()
+		{
+			try {
+				socket.close();
+			} catch (IOException e) {
+			}
+		}
+	}
+
+	private static void realmain(int port, List<String> hosts) throws Exception
+	{
+		BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
+
+		ServerSocket server = new ServerSocket(port);
+		server.setSoTimeout(1);
+
+		List<Connection> clients = new LinkedList<Connection>();
+
+		for (;;) {
+			if (stdin.ready()) {
+				String str = stdin.readLine();
+
+				if (str == null)
+					break;
+
+				// TODO - send the user's message
+			}
+
+			try {
+				Socket client_s = server.accept();
+				Connection client = new Connection(client_s);
+
+				// TODO - send a welcome message
+
+				clients.add(client);
+			} catch (SocketTimeoutException e) {
+			}
+
+			// TODO - handle inbound messages
+		}
+
+		for (Connection client : clients)
+			client.socket.close();
+
+		server.close();
+	}
+
 	public static void main(String[] args)
 	{
-		System.out.println("Hello, World!");
+		if (args.length < 2) {
+			System.err.println("err: needs at least two arguments");
+			System.err.println("usage: port hosts...");
+			System.exit(1);
+		}
+
+		int port = Integer.parseInt(args[0]);
+		List<String> hosts = new LinkedList<String>();
+
+		for (int i = 1; i < args.length; ++i)
+			hosts.add(args[i]);
+
+		try {
+			realmain(port, hosts);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
