@@ -1,66 +1,121 @@
+/* Copyright (C) 2018 Dylan Katz
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 package P1;
 
 import java.io.*;
 import java.net.*;
-import java.nio.*;
-import java.nio.channels.*;
 import java.util.*;
 
 public class Server
 {
-	public static void main(String args[]) throws Exception
+	private static class Connection
+	{
+		public String nick;
+		private Socket socket;
+		private InputStream rawIn;
+		private DataInputStream in;
+		private DataOutputStream out;
+
+		public Connection(Socket _socket) throws IOException
+		{
+			socket = _socket;
+			rawIn = socket.getInputStream();
+			in = new DataInputStream(rawIn);
+			out = new DataOutputStream(socket.getOutputStream());
+
+			nick = in.readUTF();
+		}
+
+		public boolean available() throws IOException
+		{
+			return rawIn.available() > 0;
+		}
+
+		public String read() throws IOException
+		{
+			return in.readUTF();
+		}
+
+		public void write(String _out) throws IOException
+		{
+			out.writeUTF(_out);
+		}
+
+		public void close() throws IOException
+		{
+			socket.close();
+		}
+	}
+
+	private static void realmain(int port) throws Exception
+	{
+		List<Connection> clients = new LinkedList<Connection>();
+		ServerSocket socket = new ServerSocket(port);
+		socket.setSoTimeout(1);
+
+		for (;;) {
+			try {
+				Socket news = socket.accept();
+				Connection client = new Connection(news);
+
+				for (Connection client2 : clients)
+					client2.write(client.nick + " has joined");
+
+				clients.add(client);
+			} catch (SocketTimeoutException e) {
+			}
+
+			for (Iterator<Connection> i = clients.iterator(); i.hasNext(); ) {
+				Connection client = i.next();
+
+				if (client.available()) {
+					String data = client.read();
+
+					if (data == null) {
+						client.close();
+						i.remove();
+
+						for (Connection client2 : clients)
+							client2.write(client.nick + " has left");
+
+						continue;
+					}
+
+					data = "<" + client.nick + ">: " + data;
+
+					for (Connection client2 : clients)
+						client2.write(data);
+				}
+			}
+		}
+	}
+
+	public static void main(String args[])
 	{
 		if (args.length != 1) {
-			System.err.println("err: bad args: [port]");
+			System.err.println("err: needs one argument");
 			System.exit(1);
 		}
 
-		Selector selector = Selector.open();
+		int port = Integer.parseInt(args[0]);
 
-		ServerSocketChannel server = ServerSocketChannel.open();
-		server.socket().bind(new InetSocketAddress(Integer.parseInt(args[0])));
-		server.configureBlocking(false);
-		server.register(selector, SelectionKey.OP_ACCEPT);
-
-		HashMap<SelectionKey, String> names = new HashMap<SelectionKey, String>();
-		HashSet<ObjectOutputStream> outputs = new HashSet<ObjectOutputStream>();
-
-		for (;;) {
-			int ready_channels = selector.select();
-
-			if (ready_channels < 1)
-				continue;
-
-			Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
-
-			while (keys.hasNext()) {
-				SelectionKey key = keys.next();
-
-				if (key.isAcceptable()) {
-					SocketChannel client = server.accept();
-					client.configureBlocking(false);
-
-					SelectionKey newkey = client.register(selector, SelectionKey.OP_READ);
-					ObjectOutputStream newoutput = new ObjectOutputStream(client.socket().getOutputStream());
-					ObjectInputStream newinput = new ObjectInputStream(client.socket().getInputStream());
-
-					newkey.attach((Object)newinput);
-					outputs.add(newoutput);
-				} else if (key.isReadable()) {
-					Message msg = (Message)(((ObjectInputStream)key.attachment()).readObject());
-
-					if (msg == null)
-						continue;
-
-					msg.sender = names.getOrDefault(key, "");
-
-					if (msg.type == Message.Type.NICK)
-						names.put(key, msg.text);
-
-					for (ObjectOutputStream output : outputs)
-						output.writeObject((Object)msg);
-				}
-			}
+		try {
+			realmain(port);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 }

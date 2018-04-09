@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Dylan Katz <dykatz@uw.edu>
+/* Copyright (C) 2018 Dylan Katz
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

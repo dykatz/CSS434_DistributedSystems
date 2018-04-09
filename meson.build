@@ -12,10 +12,10 @@ jar('Lab1b_TcpServerDouble', 'Lab1b/TcpServerDouble.java',
 	main_class: 'Lab1a.TcpServerDouble',
 	include_directories: include_directories('.'))
 
-jar('P1_Server', 'P1/Server.java', 'P1/Message.java',
+jar('P1_Server', 'P1/Server.java',
 	main_class: 'P1.Server',
 	include_directories: include_directories('.'))
 
-jar('P1_Client', 'P1/Client.java', 'P1/Message.java',
+jar('P1_Client', 'P1/Client.java',
 	main_class: 'P1.Client',
 	include_directories: include_directories('.'))
