@@ -39,24 +39,49 @@ public class Server
 			nick = in.readUTF();
 		}
 
-		public boolean available() throws IOException
+		public boolean available()
 		{
-			return rawIn.available() > 0;
+			try {
+				return rawIn.available() > 0;
+			} catch (IOException e) {
+				try {
+					socket.close();
+				} catch (IOException f) {
+				}
+
+				return false;
+			}
 		}
 
-		public String read() throws IOException
+		public String read()
 		{
-			return in.readUTF();
+			try {
+				return in.readUTF();
+			} catch (IOException e) {
+				try {
+					socket.close();
+				} catch (IOException f) {
+				}
+
+				return null;
+			}
 		}
 
-		public void write(String _out) throws IOException
+		public void write(String _out)
 		{
-			out.writeUTF(_out);
+			try {
+				out.writeUTF(_out);
+			} catch (IOException e) {
+				try {
+					socket.close();
+				} catch (IOException f) {
+				}
+			}
 		}
 
-		public void close() throws IOException
+		public boolean closed()
 		{
-			socket.close();
+			return socket.isClosed();
 		}
 	}
 
@@ -78,26 +103,25 @@ public class Server
 			} catch (SocketTimeoutException e) {
 			}
 
-			for (Iterator<Connection> i = clients.iterator(); i.hasNext(); ) {
-				Connection client = i.next();
-
+			for (Connection client : clients) {
 				if (client.available()) {
-					String data = client.read();
-
-					if (data == null) {
-						client.close();
-						i.remove();
-
-						for (Connection client2 : clients)
-							client2.write(client.nick + " has left");
-
-						continue;
-					}
-
-					data = "<" + client.nick + ">: " + data;
+					String data = "<" + client.nick + "> " + client.read();
 
 					for (Connection client2 : clients)
 						client2.write(data);
+				}
+			}
+
+			for (Iterator<Connection> i = clients.iterator(); i.hasNext(); ) {
+				Connection client = i.next();
+
+				if (client.closed()) {
+					i.remove();
+
+					for (Connection client2 : clients)
+						client2.write(client.nick + " has left");
+
+					continue;
 				}
 			}
 		}
