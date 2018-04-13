@@ -32,13 +32,12 @@ public class MyProgram
 		System.out.println("]");
 
 		for (int i = 1; i <= 3; ++i)
-			MPI.COMM_WORLD.Send(array, i * 25, 25, MPI.DOUBLE, 3, 0);
+			MPI.COMM_WORLD.Send(array, i * 25, 25, MPI.DOUBLE, i, 0);
 
-		for (int i = 0; i < 25; ++i)
-			array[i] = Math.sqrt(array[i]);
+		for (int i = 0; i < 25; ++i) array[i] = Math.sqrt(array[i]);
 
 		for (int i = 1; i <= 3; ++i)
-			MPI.COMM_WORLD.Recv(array, i * 25, 25, MPI.DOUBLE, 1, 0);
+			MPI.COMM_WORLD.Recv(array, i * 25, 25, MPI.DOUBLE, i, 0);
 
 		System.out.printf("Post: [%d", array[0]);
 
@@ -54,8 +53,7 @@ public class MyProgram
 
 		MPI.COMM_WORLD.Recv(array, 0, array.length, MPI.DOUBLE, 0, 0);
 
-		for (int i = 0; i < array.length; ++i)
-			array[i] = Math.sqrt(array[i]);
+		for (int i = 0; i < array.length; ++i) array[i] = Math.sqrt(array[i]);
 
 		MPI.COMM_WORLD.Send(array, 0, array.length, MPI.DOUBLE, 0, 0);
 	}
