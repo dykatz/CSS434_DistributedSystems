@@ -31,16 +31,14 @@ public class MyProgram
 
 		System.out.println("]");
 
-		MPI.COMM_WORLD.Send(array, 25, 25, MPI.DOUBLE, 1, 0);
-		MPI.COMM_WORLD.Send(array, 50, 25, MPI.DOUBLE, 2, 0);
-		MPI.COMM_WORLD.Send(array, 75, 25, MPI.DOUBLE, 3, 0);
+		for (int i = 1; i <= 3; ++i)
+			MPI.COMM_WORLD.Send(array, i * 25, 25, MPI.DOUBLE, 3, 0);
 
 		for (int i = 0; i < 25; ++i)
 			array[i] = Math.sqrt(array[i]);
 
-		MPI.COMM_WORLD.Recv(array, 25, 25, MPI.DOUBLE, 1, 0);
-		MPI.COMM_WORLD.Recv(array, 50, 25, MPI.DOUBLE, 2, 0);
-		MPI.COMM_WORLD.Recv(array, 75, 25, MPI.DOUBLE, 3, 0);
+		for (int i = 1; i <= 3; ++i)
+			MPI.COMM_WORLD.Recv(array, i * 25, 25, MPI.DOUBLE, 1, 0);
 
 		System.out.printf("Post: [%d", array[0]);
 
@@ -66,7 +64,7 @@ public class MyProgram
 	{
 		MPI.Init(args);
 
-		int me = MPI.COMM_WORLD.Rank();
+		int rank = MPI.COMM_WORLD.Rank();
 		int size = MPI.COMM_WORLD.Size();
 
 		if (size < 4) {
@@ -74,7 +72,9 @@ public class MyProgram
 			System.exit(1);
 		}
 
-		if (me == 0)
+		System.out.printf("Rank: %d\n", rank);
+
+		if (rank == 0)
 			main_rank0();
 		else
 			main_rankN();
