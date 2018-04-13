@@ -37,6 +37,11 @@ public class Causal
 			} catch (IOException e) {
 			}
 		}
+
+		public boolean closed()
+		{
+			return socket.isClosed();
+		}
 	}
 
 	private static void realmain(int port, List<String> hosts) throws Exception
