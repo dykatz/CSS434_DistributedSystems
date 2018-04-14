@@ -19,15 +19,15 @@ public class MyProgram
 {
 	private static void main_rank0() throws Exception
 	{
-		double array = new double[100];
+		double array[] = new double[100];
 
 		for (int i = 0; i < array.length; ++i)
 			array[i] = Math.random() * 100;
 
-		System.out.printf("Pre:  [%d", array[0]);
+		System.out.printf("Pre:  [%f", array[0]);
 
 		for (int i = 1; i < array.length; ++i)
-			System.out.printf(", %d", array[i]);
+			System.out.printf(", %f", array[i]);
 
 		System.out.println("]");
 
@@ -39,17 +39,17 @@ public class MyProgram
 		for (int i = 1; i <= 3; ++i)
 			MPI.COMM_WORLD.Recv(array, i * 25, 25, MPI.DOUBLE, i, 0);
 
-		System.out.printf("Post: [%d", array[0]);
+		System.out.printf("Post: [%f", array[0]);
 
 		for (int i = 1; i < array.length; ++i)
-			System.out.printf(", %d", array[i]);
+			System.out.printf(", %f", array[i]);
 
 		System.out.println("]");
 	}
 
 	private static void main_rankN() throws Exception
 	{
-		double array = new double[25];
+		double array[] = new double[25];
 
 		MPI.COMM_WORLD.Recv(array, 0, array.length, MPI.DOUBLE, 0, 0);
 
