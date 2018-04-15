@@ -186,7 +186,6 @@ public class Chat
 		for (int i = 2; i < args.length - 1; i += 2) {
 			String host = args[i];
 			int port = Integer.parseInt(args[i + 1]);
-			System.out.printf("attempting connection to %s on %d\n", host, port);
 
 			try {
 				Socket socket = new Socket(host, port);
@@ -219,14 +218,14 @@ public class Chat
 				if (client.isAvailable()) {
 					Message input = client.read();
 
-					if (input.getStamp() > stamp + 1) {
+					if (input.getStamp() > stamp) {
 						backlog.add(input);
 					} else {
 						System.out.println(input);
 						stamp = Math.max(stamp, input.getStamp());
 
 						for (Message msg : backlog) {
-							if (msg.getStamp() <= stamp + 1) {
+							if (msg.getStamp() <= stamp) {
 								System.out.println(msg);
 								stamp = Math.max(stamp, msg.getStamp());
 								backlog.remove(msg);
