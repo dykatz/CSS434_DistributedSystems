@@ -20,6 +20,6 @@ jar('P1_Client', 'P1/Client.java',
 	main_class: 'P1.Client',
 	include_directories: include_directories('.'))
 
-jar('P1_Causal', 'P1/Causal.java',
-	main_class: 'P1.Causal',
+jar('P1_Causal', 'P1/Chat.java',
+	main_class: 'P1.Chat',
 	include_directories: include_directories('.'))
