@@ -144,11 +144,6 @@ public class Chat
 	private static ServerSocket listener;
 	private static String nick;
 
-	private static Message makeMessage(String _t)
-	{
-		return new Message(stamp, _t, nick);
-	}
-
 	public static void main(String[] args) throws Exception
 	{
 		if (args.length % 2 > 0 || args.length < 2) {
@@ -188,7 +183,7 @@ public class Chat
 			} catch (SocketTimeoutException e) {}
 
 			if (stdin.ready()) {
-				Message input = makeMessage(stdin.readLine());
+				Message input = new Message(stamp, stdin.readLine(), nick);
 				++stamp;
 
 				for (Connection client : connections)
