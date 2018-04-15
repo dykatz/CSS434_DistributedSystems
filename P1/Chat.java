@@ -222,12 +222,12 @@ public class Chat
 						backlog.add(input);
 					} else {
 						System.out.println(input);
-						stamp = Math.max(stamp, input.getStamp());
+						stamp = Math.max(stamp, input.getStamp() + 1);
 
 						for (Message msg : backlog) {
 							if (msg.getStamp() <= stamp) {
 								System.out.println(msg);
-								stamp = Math.max(stamp, msg.getStamp());
+								stamp = Math.max(stamp, msg.getStamp() + 1);
 								backlog.remove(msg);
 							}
 						}
