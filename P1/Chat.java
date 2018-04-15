@@ -45,6 +45,31 @@ public class Chat
 		}
 	}
 
+	private static class MessageComparator implements Comparator<Message>
+	{
+		public int compare(Message a, Message b)
+		{
+			int sa = a.getStamp(), sb = b.getStamp();
+
+			if (sa < sb)
+				return -1;
+			else if (sa > sb)
+				return 1;
+			else
+				return a.toString().compareTo(b.toString());
+		}
+
+		public boolean equals(Message a, Message b)
+		{
+			int sa = a.getStamp(), sb = b.getStamp();
+
+			if (sa != sb)
+				return false;
+			else
+				return a.toString().equals(b.toString());
+		}
+	}
+
 	private static class Connection
 	{
 		private Set<Connection> container;
@@ -139,7 +164,7 @@ public class Chat
 
 	private static int stamp = 0;
 	private static Set<Connection> connections;
-	private static List<Message> backlog;
+	private static NavigableSet<Message> backlog;
 	private static BufferedReader stdin;
 	private static ServerSocket listener;
 	private static String nick;
@@ -153,7 +178,7 @@ public class Chat
 		}
 
 		connections = new HashSet<Connection>();
-		backlog = new LinkedList<Message>();
+		backlog = new TreeSet<Message>(new MessageComparator());
 		stdin = new BufferedReader(new InputStreamReader(System.in));
 		listener = new ServerSocket(Integer.parseInt(args[1]));
 		nick = args[0];
@@ -195,17 +220,16 @@ public class Chat
 					Message input = client.read();
 
 					if (input.getStamp() > stamp + 1) {
-						backlog.add(0, input);
+						backlog.add(input);
 					} else {
 						System.out.println(input);
 						stamp = Math.max(stamp, input.getStamp());
 
-						for (int i = backlog.size() - 1; i >= 0; --i) {
-							Message msg = backlog.get(i);
-
-							if (msg.getStamp() <= stamp) {
+						for (Message msg : backlog) {
+							if (msg.getStamp() <= stamp + 1) {
 								System.out.println(msg);
-								backlog.remove(i);
+								stamp = Math.max(stamp, msg.getStamp());
+								backlog.remove(msg);
 							}
 						}
 					}
