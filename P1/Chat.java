@@ -43,6 +43,11 @@ public class Chat
 		{
 			return from + ": " + text;
 		}
+
+		public String getFrom()
+		{
+			return from;
+		}
 	}
 
 	private static class MessageComparator implements Comparator<Message>
@@ -90,35 +95,33 @@ public class Chat
 			container.add(this);
 		}
 
-		public void onAccept(String _n)
+		public void onAccept(String _n, int _s)
 		{
 			try {
 				in = new ObjectInputStream(rawIn);
 				out = new ObjectOutputStream(rawOut);
 
 				name = (String)in.readObject();
-				out.writeObject((Object)_n);
+				out.writeObject((Object)new Message(_s, null, _n));
 			} catch (Exception e) {
 				close();
 			}
 		}
 
-		public void onStartup(String _n)
+		public int onStartup(String _n)
 		{
 			try {
 				out = new ObjectOutputStream(rawOut);
 				in = new ObjectInputStream(rawIn);
 
 				out.writeObject((Object)_n);
-				name = (String)in.readObject();
+				Message msg = read();
+				name = msg.getFrom();
+				return msg.getStamp();
 			} catch (Exception e) {
 				close();
+				return 0;
 			}
-		}
-
-		public String getName()
-		{
-			return name;
 		}
 
 		public boolean isAvailable()
@@ -156,6 +159,7 @@ public class Chat
 		{
 			try {
 				out.writeObject((Object)_m);
+				out.flush();
 			} catch (Exception e) {
 				close();
 			}
@@ -190,7 +194,7 @@ public class Chat
 			try {
 				Socket socket = new Socket(host, port);
 				Connection client = new Connection(connections, socket);
-				client.onStartup(nick);
+				stamp = Math.max(stamp, client.onStartup(nick));
 				System.out.printf("successfully connected to %s on %d!\n", host, port);
 			} catch (Exception e) {
 				System.err.printf("warning: failed to connect to %s on %d at startup\n", host, port);
@@ -203,7 +207,7 @@ public class Chat
 			try {
 				Socket socket = listener.accept();
 				Connection client = new Connection(connections, socket);
-				client.onAccept(nick);
+				client.onAccept(nick, stamp);
 			} catch (SocketTimeoutException e) {}
 
 			if (stdin.ready()) {
