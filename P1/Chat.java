@@ -1,243 +1,218 @@
-/* Copyright (C) 2018 Dylan Katz
- *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-
-package P1;
-
-import java.io.*;
-import java.net.*;
+import java.net.*;  // ServerSocket, Socket
+import java.io.*;   // InputStream, ObjectInputStream, ObjectOutputStream
 import java.util.*;
 
-public class Chat
-{
-	private static class Message implements Serializable
-	{
-		private int stamp;
-		private String text;
-		private String from;
+class Message implements Serializable {
+	public String text;
+	public List<Integer> stamps;
+	public int rank;
 
-		public Message(int _s, String _t, String _f)
-		{
-			stamp = _s;
-			text = _t;
-			from = _f;
-		}
-
-		public int getStamp()
-		{
-			return stamp;
-		}
-
-		public String toString()
-		{
-			return from + ": " + text;
-		}
-
-		public String getFrom()
-		{
-			return from;
-		}
+	public Message( String _text, List<Integer> _stamps ) {
+		text = _text;
+		stamps = new ArrayList<Integer>( _stamps );
 	}
 
-	private static class MessageComparator implements Comparator<Message>
-	{
-		public int compare(Message a, Message b)
-		{
-			int sa = a.getStamp(), sb = b.getStamp();
-
-			if (sa < sb)
-				return -1;
-			else if (sa > sb)
-				return 1;
-			else
-				return a.toString().compareTo(b.toString());
-		}
-
-		public boolean equals(Message a, Message b)
-		{
-			int sa = a.getStamp(), sb = b.getStamp();
-
-			if (sa != sb)
-				return false;
-			else
-				return a.toString().equals(b.toString());
-		}
-	}
-
-	private static class Connection
-	{
-		private Set<Connection> container;
-		private String name;
-		private Socket socket;
-		private InputStream rawIn;
-		private OutputStream rawOut;
-		private ObjectInputStream in;
-		private ObjectOutputStream out;
-
-		public Connection(Set<Connection> _c, Socket _s) throws Exception
-		{	
-			container = _c;
-			socket = _s;
-			rawIn = _s.getInputStream();
-			rawOut = _s.getOutputStream();
-
-			container.add(this);
-		}
-
-		public void onAccept(String _n, int _s)
-		{
-			try {
-				in = new ObjectInputStream(rawIn);
-				out = new ObjectOutputStream(rawOut);
-
-				name = (String)in.readObject();
-				out.writeObject((Object)new Message(_s, null, _n));
-			} catch (Exception e) {
-				close();
-			}
-		}
-
-		public int onStartup(String _n)
-		{
-			try {
-				out = new ObjectOutputStream(rawOut);
-				in = new ObjectInputStream(rawIn);
-
-				out.writeObject((Object)_n);
-				Message msg = read();
-				name = msg.getFrom();
-				return msg.getStamp();
-			} catch (Exception e) {
-				close();
-				return 0;
-			}
-		}
-
-		public boolean isAvailable()
-		{
-			try {
-				return rawIn.available() > 0;
-			} catch (IOException e) {
-				close();
+	public boolean canPrint( List<Integer> _s ) {
+		for ( int i = 0; i < _s.size(); ++i ) {
+			if ( ( i == rank && stamps.get( i ) != _s.get( i ) + 1 )
+				|| ( i != rank && stamps.get( i ) > _s.get( i ) ) ) {
 				return false;
 			}
 		}
 
-		public void close()
-		{
-			container.remove(this);
-			try { out.close();    } catch (IOException e) {}
-			try { in.close();     } catch (IOException e) {}
-			try { rawOut.close(); } catch (IOException e) {}
-			try { rawIn.close();  } catch (IOException e) {}
-			try { socket.close(); } catch (IOException e) {}
-		}
-
-		public Message read()
-		{
-			try {
-				return (Message)in.readObject();
-			} catch (Exception e) {
-				e.printStackTrace();
-				close();
-				return null;
-			}
-		}
-
-		public void write(Message _m)
-		{
-			try {
-				out.writeObject((Object)_m);
-				out.flush();
-			} catch (Exception e) {
-				close();
-			}
-		}
+		return true;
 	}
+}
 
-	private static int stamp = 0;
-	private static Set<Connection> connections;
-	private static NavigableSet<Message> backlog;
-	private static BufferedReader stdin;
-	private static ServerSocket listener;
-	private static String nick;
+public class Chat {
+	// Each element i of the follwoing arrays represent a chat member[i]
+	private Socket[] sockets = null;             // connection to i
+	private InputStream[] indata = null;         // used to check data from i
+	private ObjectInputStream[] inputs = null;   // a message from i
+	private ObjectOutputStream[] outputs = null; // a message to i
+	private List<Integer> stamps = null;
 
-	public static void main(String[] args) throws Exception
-	{
-		if (args.length % 2 > 0 || args.length < 2) {
-			System.err.println("err: wrong number of arguments");
-			System.err.println("usage: nick port [host0 port0 host1 port1...]");
-			System.exit(1);
-		}
+	/**
+	 * Is the main body of the Chat application. This constructor establishes
+	 * a socket to each remote chat member, broadcasts a local user's message
+	 * to all the remote chat members, and receive a message from each of them.
+	 *
+	 * @param port  IP port used to connect to a remote node as well as to
+	 *              accept a connection from a remote node.
+	 * @param rank  this local node's rank (one of 0 through to #members - 1)
+	 * @param hosts a list of all computing nodes that participate in chatting
+	 */
+	public Chat( int port, int rank, String[] hosts ) throws IOException {
+		// print out my port, rank and local hostname
+		System.out.println( "port = " + port + ", rank = " + rank +
+					", localhost = " + hosts[rank] );
 
-		connections = new HashSet<Connection>();
-		backlog = new TreeSet<Message>(new MessageComparator());
-		stdin = new BufferedReader(new InputStreamReader(System.in));
-		listener = new ServerSocket(Integer.parseInt(args[1]));
-		nick = args[0];
+		// create sockets, inputs, outputs, and vector arrays
+		sockets = new Socket[hosts.length];
+		indata = new InputStream[hosts.length];
+		inputs = new ObjectInputStream[hosts.length];
+		outputs = new ObjectOutputStream[hosts.length];
+		stamps = new ArrayList<Integer>(hosts.length);
 
-		for (int i = 2; i < args.length - 1; i += 2) {
-			String host = args[i];
-			int port = Integer.parseInt(args[i + 1]);
+		for ( int i = 0; i < hosts.length; ++i )
+			stamps.add( 0 );
 
-			try {
-				Socket socket = new Socket(host, port);
-				Connection client = new Connection(connections, socket);
-				stamp = Math.max(stamp, client.onStartup(nick));
-				System.out.printf("successfully connected to %s on %d!\n", host, port);
-			} catch (Exception e) {
-				System.err.printf("warning: failed to connect to %s on %d at startup\n", host, port);
-			}
-		}
+		// establish a complete network
+		ServerSocket server = new ServerSocket( port );
+		for ( int i = hosts.length - 1; i >= 0; i-- ) {
+			if ( i > rank ) {
+				// accept a connection from others with a higher rank
+				Socket socket = server.accept( );
+				String src_host = socket.getInetAddress( ).getHostName( );
 
-		listener.setSoTimeout(1);
+				// find this source host's rank
+				for ( int j = 0; j < hosts.length; j++ ) {
+					if ( src_host.startsWith( hosts[j] ) ) {
+						// j is this source host's rank
+						System.out.println( "accepted from " + src_host );
 
-		for (;;) {
-			try {
-				Socket socket = listener.accept();
-				Connection client = new Connection(connections, socket);
-				client.onAccept(nick, stamp);
-			} catch (SocketTimeoutException e) {}
-
-			if (stdin.ready()) {
-				Message input = new Message(stamp, stdin.readLine(), nick);
-				++stamp;
-
-				for (Connection client : connections)
-					client.write(input);
-			}
-
-			for (Connection client : connections) {
-				if (client.isAvailable()) {
-					Message input = client.read();
-
-					if (input.getStamp() > stamp) {
-						backlog.add(input);
-					} else {
-						System.out.println(input);
-						stamp = Math.max(stamp, input.getStamp() + 1);
-
-						for (Message msg : backlog) {
-							if (msg.getStamp() <= stamp) {
-								System.out.println(msg);
-								stamp = Math.max(stamp, msg.getStamp() + 1);
-								backlog.remove(msg);
-							}
-						}
+						// store this source host j's connection, input stream
+						// and object intput/output streams.
+						sockets[j] = socket;
+						indata[j] = socket.getInputStream( );
+						inputs[j] = 
+							new ObjectInputStream( indata[j] );
+						outputs[j] = 
+							new ObjectOutputStream( socket.getOutputStream( ) );
 					}
 				}
 			}
+			if ( i < rank ) {
+				// establish a connection to others with a lower rank
+				sockets[i] = new Socket( hosts[i], port );
+				System.out.println( "connected to " + hosts[i] );
+
+				// store this destination host j's connection, input stream
+				// and object intput/output streams.
+				outputs[i] 
+					= new ObjectOutputStream( sockets[i].getOutputStream( ) );
+				indata[i] = sockets[i].getInputStream( );
+				inputs[i] 
+					= new ObjectInputStream( indata[i] );
+			}
+		}
+
+		BufferedReader keyboard
+			= new BufferedReader( new InputStreamReader( System.in ) );
+		Set<Message> pending = new HashSet<Message>( );
+
+		// now goes into a chat
+		while ( true ) {
+			// read a message from keyboard and broadcast it to all the others.
+			if ( keyboard.ready( ) ) {
+				String message = keyboard.readLine( );
+				if ( message == null )
+					break;
+
+				stamps.set( rank, stamps.get( rank ) + 1 );
+				Message msg = new Message( message, stamps );
+
+				for ( int i = 0; i < hosts.length; i++ ) {
+					if ( i != rank ) {
+						outputs[i].writeObject( ( Object )msg );
+						outputs[i].flush( );
+					}
+				}
+			}
+
+			// read a message from each of the chat members
+			for ( int i = 0; i < hosts.length; i++ ) {
+				// to intentionally create a misordered message deliveray, 
+				// let's slow down the chat member #2.
+				try {
+					if ( rank == 2 )
+						Thread.currentThread( ).sleep( 5000 );
+				} catch ( InterruptedException e ) {}
+
+				if ( i != rank && indata[i].available( ) > 0 ) {
+					try {
+						Message message = ( Message )inputs[i].readObject( );
+						message.rank = i;
+
+						if ( message.canPrint( stamps ) ) {
+							System.out.println( hosts[message.rank] + ": "
+								+ message.text );
+							stamps.set( i, Math.max( stamps.get( i ),
+								message.stamps.get( i ) ) );
+
+							for ( Message msg : pending ) {
+								if ( msg.canPrint( stamps ) ) {
+									System.out.println( hosts[msg.rank]
+										+ ": " + msg.text );
+									pending.remove( msg );
+									stamps.set( msg.rank, Math.max(
+										stamps.get( msg.rank ),
+										msg.stamps.get( msg.rank ) ) );
+								}
+							}
+						} else {
+							pending.add( message );
+						}
+					} catch ( ClassNotFoundException e ) {}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Is the main function that verifies the correctness of its arguments and
+	 * starts the application.
+	 *
+	 * @param args receives <port> <ip1> <ip2> ... where port is an IP port
+	 *             to establish a TCP connection and ip1, ip2, .... are a
+	 *             list of all computing nodes that participate in a chat.
+	 */
+	public static void main( String[] args ) {
+
+		// verify #args.
+		if ( args.length < 2 ) {
+			System.err.println( "Syntax: java Chat <port> <ip1> <ip2> ..." );
+			System.exit( -1 );
+		}
+
+		// retrieve the port
+		int port = 0;
+		try {
+			port = Integer.parseInt( args[0] );
+		} catch ( NumberFormatException e ) {
+			e.printStackTrace( );
+			System.exit( -1 );
+		}
+		if ( port <= 5000 ) {
+			System.err.println( "port should be 5001 or larger" );
+			System.exit( -1 );
+		}
+
+		// retireve my local hostname
+		String localhost = null;
+		try {
+			localhost = InetAddress.getLocalHost( ).getHostName( );
+		} catch ( UnknownHostException e ) {
+			e.printStackTrace( );
+			System.exit( -1 );
+		}
+
+		// store a list of computing nodes in hosts[] and check my rank
+		int rank = -1;
+		String[] hosts = new String[args.length - 1];
+		for ( int i = 0; i < args.length - 1; i++ ) {
+			hosts[i] = args[i + 1];
+			if ( localhost.startsWith( hosts[i] ) ) 
+			// found myself in the i-th member of hosts
+			rank = i;
+		}
+
+		// now start the Chat application
+		try {
+			new Chat( port, rank, hosts );
+		} catch ( IOException e ) {
+			e.printStackTrace( );
+			System.exit( -1 );
 		}
 	}
 }
