@@ -1,4 +1,4 @@
-project('CSS434', 'java')
+project('CSS434', 'java', 'cpp')
 
 jar('Lab1a_EchoServer', 'Lab1a/EchoServer.java',
 	main_class: 'Lab1a.EchoServer',
@@ -23,3 +23,5 @@ jar('P1_Client', 'P1/Client.java',
 jar('P1_Causal', 'P1/Chat2.java',
 	main_class: 'P1.Chat2',
 	include_directories: include_directories('.'))
+
+executable('Lab3', 'Lab3/Lab3.cpp')
