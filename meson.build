@@ -25,3 +25,4 @@ jar('P1_Causal', 'P1/Chat2.java',
 	include_directories: include_directories('.'))
 
 executable('Lab3', 'Lab3/Lab3.cpp')
+executable('P2_Diffuse', 'P2/diffuse.cpp')
