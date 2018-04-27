@@ -69,7 +69,7 @@ main(void)
 
 		for (x = 1; x < Sz - 1; ++x) {
 			for (y = 1; y < Sz - 1; ++y) {
-				z[(p+1)%2][x][y] = z[p][x][y]*(1-4*Rate)+Rate*(
+				z[!p][x][y] = z[p][x][y]*(1-4*Rate)+Rate*(
 					z[p][x+1][y] + z[p][x-1][y] +
 					z[p][x][y+1] + z[p][x][y-1]);
 			}
