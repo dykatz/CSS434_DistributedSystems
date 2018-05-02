@@ -23,10 +23,10 @@ public class Heat2D
   private static int Timespan;
   private static int Warmspan;
   private static int Interval;
-  private static float Rate;
+  private static double Rate;
 
-  private static float[][][] z;
-  private static int t, p, y, x;
+  private static double[][] z;
+  private static int t, p;
 
   private static void printz()
   {
@@ -35,10 +35,9 @@ public class Heat2D
 
     System.out.printf("time = %d\n", t);
 
-    for (y = 0; y < Sz; ++y) {
-      for (x = 0; x < Sz; ++x) {
-        System.out.printf("%d", Math.round(Math.floor(z[p][x][y] / 2)));
-      }
+    for (int y = 1; y < Sz - 1; ++y) {
+      for (int x = 1; x < Sz - 1; ++x)
+        System.out.printf("%d", Math.round(Math.floor(z[p][y*Sz+x] / 2)));
 
       System.out.println();
     }
@@ -48,33 +47,51 @@ public class Heat2D
 
   private static void matchedges()
   {
-    for (y = 0; y < Sz; ++y) {
-      z[p][0][y] = z[p][1][y];
-      z[p][Sz - 1][y] = z[p][Sz - 2][y];
+    for (int y = 0; y < Sz; ++y) {
+      z[p][y*Sz] = z[p][y*Sz+1];
+      z[p][y*Sz+Sz-1] = z[p][y*Sz+Sz-2];
     }
 
-    for (x = 0; x < Sz; ++x) {
-      z[p][x][0] = z[p][x][1];
-      z[p][x][Sz - 1] = z[p][x][Sz - 2];
+    for (int x = 0; x < Sz; ++x) {
+      z[p][x] = z[p][Sz+x];
+      z[p][(Sz-1)*Sz+x] = z[p][(Sz-2)*Sz+x];
     }
   }
 
   private static void hottopedge()
   {
-    for (x = Sz / 3; x < Sz * 2 / 3; ++x)
-      z[p][x][0] = 19.0f;
+    for (int x = Sz / 3; x < Sz * 2 / 3; ++x)
+      z[p][x] = 19.0f;
   }
 
-  private static void heatdiffuse()
+  private static void heatdiffuse0()
   {
     int q = (p + 1) % 2;
 
-    for (x = 1; x < Sz - 1; ++x) {
-      for (y = 1; y < Sz - 1; ++y) {
-        z[q][x][y] = z[p][x][y]*(1 - 4*Rate) + Rate*(
-          z[p][x-1][y] + z[p][x+1][y] + z[p][x][y-1] + z[p][x][y+1]);
-      }
-    }
+    for (int i = 1; i < Peers; ++i)
+      MPI.COMM_WORLD.Send(z[p], Sz*(i*(Sz-2)/Peers), Sz*((Sz-2)/Peers+2), MPI.DOUBLE, i, 0);
+
+    for (int y = 1; y < (Sz-2)/Peers+1; ++y)
+      for (int x = 1; x < Sz-1; ++x)
+        z[q][y*Sz+x] = z[p][y*Sz+x]*(1-4*Rate)+Rate*(
+          z[p][(y-1)*Sz+x]+z[p][(y+1)*Sz+x]+z[p][y*Sz+x-1]+z[p][y*Sz+x+1]);
+
+    for (int i = 1; i < Peers; ++i)
+      MPI.COMM_WORLD.Recv(z[q], Sz*(i*(Sz-2)/Peers+1), Sz*(Sz-2)/Peers, MPI.DOUBLE, i, 0);
+  }
+
+  private static void heatdiffuseN()
+  {
+    int q = (p + 1) % 2;
+
+    MPI.COMM_WORLD.Recv(z[p], 0, Sz*((Sz-2)/Peers+2), MPI.DOUCLE, 0, 0);
+
+    for (int y = 1; y < (Sz-2)/Peers+1; ++y)
+      for (int x = 1; x < Sz-1; ++x)
+        z[q][y*Sz+x] = z[p][y*Sz+x]*(1-4*Rate)+Rate*(
+          z[p][(y-1)*Sz+x]+z[p][(y+1)*Sz+x]+z[p][y*Sz+x-1]+z[p][y*Sz+x+1]);
+
+    MPI.COMM_WORLD.Send(z[q], Sz, Sz*(Sz-2)/Peers, MPI.DOUBLE, 0, 0);
   }
 
   public static void main(String args[])
@@ -84,29 +101,36 @@ public class Heat2D
     Rank = MPI.COMM_WORLD.Rank();
     Peers = MPI.COMM_WORLD.Size();
 
-    Sz = args.length > 0 ? Integer.parseInt(args[0]) : 100;
+    Sz = args.length > 0 ? Integer.parseInt(args[0]) + 2 : 102;
     Timespan = args.length > 1 ? Integer.parseInt(args[1]) : 3000;
     Warmspan = args.length > 2 ? Integer.parseInt(args[2]) : 2700;
     Interval = args.length > 3 ? Integer.parseInt(args[3]) : 500;
     Rate = args.length > 4 ? Float.parseFloat(args[4]) : 0.2f;
 
-    z = new float[2][Sz][Sz];
+    assert (Sz-2)%Peers == 0 :
+      "The board size must divide evenly between the peer count";
+
     t = 0;
     p = 0;
-    y = 0;
-    x = 0;
 
-    for (; t < Warmspan; p = (++t) % 2) {
-      matchedges();
-      hottopedge();
-      printz();
-      heatdiffuse();
-    }
+    z = new double[2][Sz * (Rank == 0 ? Sz : (Sz-2)/Peers+2)];
 
-    for (; t < Timespan; p = (++t) % 2) {
-      matchedges();
-      printz();
-      heatdiffuse();
+    if (Rank == 0) {
+      for (; t < Warmspan; p = (++t) % 2) {
+        matchedges();
+        hottopedge();
+        printz();
+        heatdiffuse0();
+      }
+
+      for (; t < Timespan; p = (++t) % 2) {
+        matchedges();
+        printz();
+        heatdiffuse0();
+      }
+    } else {
+      for (; t < Timespan; p = (++t) % 2)
+        heatdiffuseN();
     }
 
     MPI.Finalize();

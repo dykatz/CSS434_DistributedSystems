@@ -31,10 +31,9 @@ public class Heat2D
 
     System.out.printf("time = %d\n", t);
 
-    for (y = 0; y < Sz; ++y) {
-      for (x = 0; x < Sz; ++x) {
+    for (y = 1; y < Sz - 1; ++y) {
+      for (x = 1; x < Sz - 1; ++x)
         System.out.printf("%d", Math.round(Math.floor(z[p][x][y] / 2)));
-      }
 
       System.out.println();
     }
@@ -75,7 +74,7 @@ public class Heat2D
 
   public static void main(String args[])
   {
-    Sz = args.length > 0 ? Integer.parseInt(args[0]) : 100;
+    Sz = args.length > 0 ? Integer.parseInt(args[0]) + 2 : 102;
     Timespan = args.length > 1 ? Integer.parseInt(args[1]) : 3000;
     Warmspan = args.length > 2 ? Integer.parseInt(args[2]) : 2700;
     Interval = args.length > 3 ? Integer.parseInt(args[3]) : 500;
