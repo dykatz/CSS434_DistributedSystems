@@ -64,7 +64,7 @@ public class Heat2D
       z[p][x] = 19.0f;
   }
 
-  private static void heatdiffuse0()
+  private static void heatdiffuse0() throws MPIException
   {
     int q = (p + 1) % 2;
 
@@ -80,11 +80,11 @@ public class Heat2D
       MPI.COMM_WORLD.Recv(z[q], Sz*(i*(Sz-2)/Peers+1), Sz*(Sz-2)/Peers, MPI.DOUBLE, i, 0);
   }
 
-  private static void heatdiffuseN()
+  private static void heatdiffuseN() throws MPIException
   {
     int q = (p + 1) % 2;
 
-    MPI.COMM_WORLD.Recv(z[p], 0, Sz*((Sz-2)/Peers+2), MPI.DOUCLE, 0, 0);
+    MPI.COMM_WORLD.Recv(z[p], 0, Sz*((Sz-2)/Peers+2), MPI.DOUBLE, 0, 0);
 
     for (int y = 1; y < (Sz-2)/Peers+1; ++y)
       for (int x = 1; x < Sz-1; ++x)
@@ -94,18 +94,18 @@ public class Heat2D
     MPI.COMM_WORLD.Send(z[q], Sz, Sz*(Sz-2)/Peers, MPI.DOUBLE, 0, 0);
   }
 
-  public static void main(String args[])
+  public static void main(String args[]) throws MPIException
   {
     MPI.Init(args);
 
     Rank = MPI.COMM_WORLD.Rank();
     Peers = MPI.COMM_WORLD.Size();
 
-    Sz = args.length > 0 ? Integer.parseInt(args[0]) + 2 : 102;
-    Timespan = args.length > 1 ? Integer.parseInt(args[1]) : 3000;
-    Warmspan = args.length > 2 ? Integer.parseInt(args[2]) : 2700;
-    Interval = args.length > 3 ? Integer.parseInt(args[3]) : 500;
-    Rate = args.length > 4 ? Float.parseFloat(args[4]) : 0.2f;
+    Sz = args.length > 1 ? Integer.parseInt(args[1]) + 2 : 102;
+    Timespan = args.length > 2 ? Integer.parseInt(args[2]) : 3000;
+    Warmspan = args.length > 3 ? Integer.parseInt(args[3]) : 2700;
+    Interval = args.length > 4 ? Integer.parseInt(args[4]) : 500;
+    Rate = args.length > 5 ? Float.parseFloat(args[5]) : 0.2f;
 
     assert (Sz-2)%Peers == 0 :
       "The board size must divide evenly between the peer count";
