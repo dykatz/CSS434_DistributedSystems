@@ -131,7 +131,7 @@ public class Heat2D_mpi
         heatdiffuse0();
       }
 
-      System.out.printf("Elapsed time = %d\n",
+      System.out.printf("Elapsed time = %f seconds\n",
         (double)(System.nanoTime() - start) / 1000000000.0);
     } else {
       for (; t < Timespan; p = (++t) % 2)
