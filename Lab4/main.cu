@@ -27,6 +27,7 @@ main(int argc, char *argv[])
 	cudaMemcpy(db, hb, N * sizeof(float), cudaMemcpyHostToDevice);
 
 	add<<<N, 1>>>(da, db, dc);
+	cudaDeviceSynchronize();
 
 	cudaMemcpy(hc, dc, N * sizeof(float), cudaMemcpyDeviceToHost);
 
