@@ -86,6 +86,8 @@ public class Heat2D
     y = 0;
     x = 0;
 
+    long start = System.nanoTime();
+
     for (; t < Warmspan; p = (++t) % 2) {
       matchedges();
       hottopedge();
@@ -98,5 +100,8 @@ public class Heat2D
       printz();
       heatdiffuse();
     }
+
+    System.out.printf("Elapsed time = %d\n",
+      (double)(System.nanoTime() - start) / 1000000000.0);
   }
 }

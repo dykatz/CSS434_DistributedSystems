@@ -116,6 +116,8 @@ public class Heat2D
     z = new double[2][Sz * (Rank == 0 ? Sz : (Sz-2)/Peers+2)];
 
     if (Rank == 0) {
+      long start = System.nanoTime();
+
       for (; t < Warmspan; p = (++t) % 2) {
         matchedges();
         hottopedge();
@@ -128,6 +130,9 @@ public class Heat2D
         printz();
         heatdiffuse0();
       }
+
+      System.out.printf("Elapsed time = %d\n",
+        (double)(System.nanoTime() - start) / 1000000000.0);
     } else {
       for (; t < Timespan; p = (++t) % 2)
         heatdiffuseN();
