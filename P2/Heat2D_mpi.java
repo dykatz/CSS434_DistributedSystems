@@ -15,7 +15,7 @@
 
 import mpi.*;
 
-public class Heat2D
+public class Heat2D_mpi
 {
   private static int Rank;
   private static int Peers;
