@@ -101,7 +101,7 @@ public class Heat2D
       heatdiffuse();
     }
 
-    System.out.printf("Elapsed time = %d\n",
+    System.out.printf("Elapsed time = %f seconds\n",
       (double)(System.nanoTime() - start) / 1000000000.0);
   }
 }
