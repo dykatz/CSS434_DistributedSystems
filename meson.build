@@ -1,4 +1,5 @@
-project('CSS434', 'java', 'cpp')
+project('CSS434', 'java', 'cpp',
+	default_options: ['cpp_std=c++11'])
 
 jar('Lab1a_EchoServer', 'Lab1a/EchoServer.java',
 	main_class: 'Lab1a.EchoServer',
@@ -26,3 +27,4 @@ jar('P1_Causal', 'P1/Chat2.java',
 
 executable('Lab3', 'Lab3/Lab3.cpp')
 executable('P2_Diffuse', 'P2/diffuse.cpp')
+executable('P3_Part1', 'P3/part1.cpp')
