@@ -38,10 +38,9 @@ main(int argc, char *argv[])
 		if (!(iss >> N))
 			usage();
 	} break;
-	case 'V': {
+	case 'V':
 		std::cout << "v0.0.1" << std::endl;
 		std::exit(0);
-	} break;
 	default:
 		usage();
 	} ARGEND;
