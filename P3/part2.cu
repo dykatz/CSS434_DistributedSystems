@@ -25,28 +25,32 @@ char *argv0;
 
 [[noreturn]] void usage(void);
 [[noreturn]] void dump_device_data(void);
+
 void random_inputs(float *, float *, int);
-__global__ void add_by_block(float *, float *, float *);
-__global__ void add_by_thread(float *, float *, float *);
+
+__global__ void add(float *, float *, float *, int);
 
 int
 main(int argc, char *argv[])
 {
-	int N;
-	bool t = false, m = false;
+	bool d = false;
+	int B = 512, T = 512;
 
 	ARGBEGIN {
-	case 'n': {
+	case 'b': {
 		std::istringstream iss(EARGF(usage()));
 
-		if (!(iss >> N))
+		if (!(iss >> B))
 			usage();
 	} break;
 	case 't': {
-		t = true;
+		std::istringstream iss(EARGF(usage()));
+
+		if (!(iss >> T))
+			usage();
 	} break;
-	case 'm': {
-		m = true;
+	case 'd': {
+		d = true;
 	} break;
 	case 'D':
 		dump_device_data();
@@ -57,9 +61,9 @@ main(int argc, char *argv[])
 		usage();
 	} ARGEND;
 
-	if (t && m)
-		usage();
+	std::cout << "Results for B=" << B << ", T=" << T << std::endl;
 
+	int N = B * T;
 	float *ha, *hb, *hc, *da, *db, *dc;
 
 	ha = (float *)malloc(N * sizeof(float));
@@ -79,13 +83,7 @@ main(int argc, char *argv[])
 
 	auto post_alloc = std::chrono::system_clock::now();
 
-	if (m) {
-		// XXX
-	} else if (t) {
-		add_by_thread<<<1, N>>>(da, db, dc);
-	} else {
-		add_by_block<<<N, 1>>>(da, db, dc);
-	}
+	add<<<B, T>>>(da, db, dc, T);
 
 	cudaDeviceSynchronize();
 
@@ -99,9 +97,11 @@ main(int argc, char *argv[])
 
 	auto end = std::chrono::system_clock::now();
 
-	for (int i = 0; i < N; ++i) {
-		std::printf("[ %7.3f ] + [ %7.3f ] = [ %8.3f ]\n",
-			ha[i], hb[i], hc[i]);
+	if (d) {
+		for (int i = 0; i < N; ++i) {
+			std::printf("[ %7.3f ] + [ %7.3f ] = [ %8.3f ]\n",
+				ha[i], hb[i], hc[i]);
+		}
 	}
 
 	free(ha);
@@ -123,7 +123,7 @@ main(int argc, char *argv[])
 void
 usage(void)
 {
-	std::cout << "usage: " << argv0 << " [-n size:int] [-m | -t]" << std::endl;
+	std::cout << "usage: " << argv0 << " [-d] [-t size:int] [-b size:int]" << std::endl;
 	std::cout << "       " << argv0 << " [-D]" << std::endl;
 	std::cout << "       " << argv0 << " [-V]" << std::endl;
 	std::exit(1);
@@ -185,13 +185,8 @@ random_inputs(float *a, float *b, int n)
 }
 
 __global__ void
-add_by_block(float *a, float *b, float *c)
+add(float *a, float *b, float *c, int T)
 {
-	c[blockIdx.x] = a[blockIdx.x] + b[blockIdx.x];
-}
-
-__global__ void
-add_by_thread(float *a, float *b, float *c)
-{
-	c[threadIdx.x] = a[threadIdx.x] + b[threadIdx.x];
+	int p = blockIdx.x * T + threadIdx.x;
+	c[p] = a[p] + b[p];
 }
