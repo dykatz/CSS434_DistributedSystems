@@ -18,21 +18,64 @@
 #include <time.h>
 #include <err.h>
 
+#include "arg.h"
+
+void usage(int);
 void matmul(double *, double *, double *, int, int, int);
 void printmul(double *, int, int);
 void testmul(int, int, int);
 
+char *argv0;
+
 int
 main(int argc, char *argv[])
 {
-	int a, b, c;
+	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10;
+
+	ARGBEGIN{
+	case 'a':
+		a = atoi(EARGF(usage(1)));
+		break;
+	case 'b':
+		b = atoi(EARGF(usage(1)));
+		break;
+	case 'c':
+		c = atoi(EARGF(usage(1)));
+		break;
+	case 'A':
+		A = atoi(EARGF(usage(1)));
+		break;
+	case 'B':
+		B = atoi(EARGF(usage(1)));
+		break;
+	case 'C':
+		C = atoi(EARGF(usage(1)));
+		break;
+	case 'h':
+		usage(0);
+	default:
+		usage(1);
+	}ARGEND
 
 	srand48(time(0));
 
-	for(a = 2; a < 10; ++a)
-		for(b = 2; b < 10; ++b)
-			for(c = 2; c < 10; ++c)
+	for(; a < A; ++a){
+		for(; b < B; ++b){
+			for(; c < C; ++c)
 				testmul(a, b, c);
+		}
+	}
+}
+
+void
+usage(int r)
+{
+	fprintf(r ? stderr : stdout,
+		"usage: %s [-h] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C]\n"
+		" a, b, c = the minimum value of the iterations (def: 2)\n"
+		" A, B, C = the maximum value of the iterations (def: 10)\n",
+		argv0);
+	exit(r);
 }
 
 void
@@ -75,7 +118,7 @@ testmul(int a, int b, int c)
 	B = malloc(c * b * sizeof(double));
 
 	if(!C || !A || !B)
-		errx(1, "calloc");
+		err(1, "calloc");
 
 	for(i = A; i < A + a*c; ++i)
 		*i = drand48();
