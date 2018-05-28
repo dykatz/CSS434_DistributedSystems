@@ -75,13 +75,17 @@ void
 usage(int r)
 {
 	fprintf(r ? stderr : stdout,
-		"usage: %s [-h] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C]\n"
+		"usage: %s [-a a] [-b b] [-c c] [-A A] [-B B] [-C C]\n"
+		"       %s [-D]\n"
+		"       %s [-h]\n\n"
 		" a, b, c = the minimum value of a matrix dimension (def: 2)\n"
-		" A, B, C = the maximum value of a matrix dimension (def: 10)\n\n"
+		" A, B, C = the maximum value of a matrix dimension (def: 10)\n"
+		" D       = show CUDA device information\n"
+		" h       = show this message\n\n"
 		" - The resulting matrix is A x B\n"
 		" - The left hand matrix is A x C\n"
 		" - The right hand matrix is C x B\n",
-		argv0);
+		argv0, argv0, argv0);
 	exit(r);
 }
 
