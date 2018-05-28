@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Dylan Katz
+/* Copyright (C) 2018 Dylan Katz, Khulan Baasan
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -22,8 +22,9 @@
 
 void usage(int);
 void matmul(double *, double *, double *, int, int, int);
-void printmul(double *, int, int);
-void testmul(int, int, int);
+void randmat(double *, int, int);
+void printmat(double *, int, int);
+void testmatmul(int, int, int);
 
 char *argv0;
 
@@ -62,7 +63,7 @@ main(int argc, char *argv[])
 	for(; a < A; ++a){
 		for(; b < B; ++b){
 			for(; c < C; ++c)
-				testmul(a, b, c);
+				testmatmul(a, b, c);
 		}
 	}
 }
@@ -79,22 +80,31 @@ usage(int r)
 }
 
 void
-matmul(double *C, double *A, double *B, int a, int b, int c)
+matmul(double *M, double *X, double *Y, int a, int b, int c)
 {
 	int i, j, k;
 
 	for(i = 0; i < a; ++i){
 		for(j = 0; j < b; ++j){
-			C[i*b + j] = 0;
+			M[i*b + j] = 0;
 
 			for(k = 0; k < c; ++k)
-				C[i*b + j] += B[k*b + j] * A[i*c + k];
+				M[i*b + j] += Y[k*b + j] * X[i*c + k];
 		}
 	}
 }
 
 void
-printmul(double *M, int a, int b)
+randmat(double *M, int a, int b)
+{
+	double *i;
+
+	for(i = M; i < M + a*b; ++i)
+		*i = drand48();
+}
+
+void
+printmat(double *M, int a, int b)
 {
 	int i, j;
 
@@ -109,33 +119,29 @@ printmul(double *M, int a, int b)
 }
 
 void
-testmul(int a, int b, int c)
+testmatmul(int a, int b, int c)
 {
-	double *A, *B, *C, *i;
+	double *M, *X, *Y;
 
-	C = malloc(a * b * sizeof(double));
-	A = malloc(a * c * sizeof(double));
-	B = malloc(c * b * sizeof(double));
+	M = (double *)malloc(a * b * sizeof(double));
+	X = (double *)malloc(a * c * sizeof(double));
+	Y = (double *)malloc(c * b * sizeof(double));
 
-	if(!C || !A || !B)
-		err(1, "calloc");
+	if(!M || !X || !Y)
+		err(1, "malloc");
 
-	for(i = A; i < A + a*c; ++i)
-		*i = drand48();
+	randmat(X, a, c);
+	randmat(Y, c, b);
+	matmul(M, X, Y, a, b, c);
 
-	for(i = B; i < B + c*b; ++i)
-		*i = drand48();
-
-	matmul(C, A, B, a, b, c);
-
-	printmul(A, a, c);
+	printmat(X, a, c);
 	printf("*\n");
-	printmul(B, c, b);
+	printmat(Y, c, b);
 	printf("=\n");
-	printmul(C, a, b);
+	printmat(M, a, b);
 	printf("~~~~~~~~~~~~~~~~~~~~~\n");
 
-	free(A);
-	free(B);
-	free(C);
+	free(M);
+	free(X);
+	free(Y);
 }
