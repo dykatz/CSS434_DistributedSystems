@@ -21,6 +21,7 @@
 #include "arg.h"
 
 void usage(int);
+void deviceinfo(void);
 void matmul(double *, double *, double *, int, int, int);
 void randmat(double *, int, int);
 void printmat(double *, int, int);
@@ -52,6 +53,8 @@ main(int argc, char *argv[])
 	case 'C':
 		C = atoi(EARGF(usage(1)));
 		break;
+	case 'D':
+		deviceinfo();
 	case 'h':
 		usage(0);
 	default:
@@ -80,6 +83,43 @@ usage(int r)
 		" - The right hand matrix is C x B\n",
 		argv0);
 	exit(r);
+}
+
+void
+deviceinfo(void)
+{
+	const int kb = 1024;
+	const int mb = kb * kb;
+
+	int count, i;
+	cudaDeviceProp properties;
+
+	cudaGetDeviceCount(&count);
+	printf("CUDA Devices: %d\n", count);
+
+	for(i = 0; i < count; ++i){
+		cudaGetDeviceProperties(&properties, i);
+
+		printf("\n"
+			"Device %d: %s: %d.%d\n"
+			"Global memory:     %dmb\n"
+			"Shared memory:     %dkb\n"
+			"Const memory:      %dkb\n"
+			"Block registers:   %d\n"
+			"Warp size:         %d\n"
+			"Threads per block: %d\n"
+			"Max block size:    [%d, %d, %d]\n"
+			"Max grid size:     [%d, %d, %d]\n",
+			i, properties.name, properties.major, properties.minor,
+			properties.totalGlobalMem / mb, properties.sharedMemPerBlock / kb,
+			properties.totalConstMem / kb, properties.regsPerBlock,
+			properties.warpSize, properties.maxThreadsPerBlock,
+			properties.maxThreadsDim[0], properties.maxThreadsDim[1],
+			properties.maxThreadsDim[2], properties.maxGridSize[0],
+			properties.maxGridSize[1], properties.maxGridSize[2]);
+	}
+
+	exit(0);
 }
 
 void
