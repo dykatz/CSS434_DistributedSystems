@@ -68,8 +68,7 @@ printmul(double *M, int a, int b)
 void
 testmul(int a, int b, int c)
 {
-	double *A, *B, *C;
-	int i;
+	double *A, *B, *C, *i;
 
 	C = malloc(a * b * sizeof(double));
 	A = malloc(a * c * sizeof(double));
@@ -78,11 +77,11 @@ testmul(int a, int b, int c)
 	if(!C || !A || !B)
 		errx(1, "calloc");
 
-	for(i = 0; i < a * c; ++i)
-		A[i] = drand48();
+	for(i = A; i < A + a*c; ++i)
+		*i = drand48();
 
-	for(i = 0; i < c * b; ++i)
-		B[i] = drand48();
+	for(i = B; i < B + c*b; ++i)
+		*i = drand48();
 
 	matmul(C, A, B, a, b, c);
 
