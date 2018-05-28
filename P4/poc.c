@@ -18,11 +18,6 @@
 #include <time.h>
 #include <err.h>
 
-/* C =  A * B
- * A : [c x b]
- * B : [a x c]
- * C : [a x b]
- */
 void matmul(double *, double *, double *, int, int, int);
 void printmul(double *, int, int);
 void testmul(int, int, int);
@@ -76,11 +71,11 @@ testmul(int a, int b, int c)
 	double *A, *B, *C;
 	int i;
 
-	C = calloc(a * b, sizeof(double));
-	A = calloc(a * c, sizeof(double));
-	B = calloc(c * b, sizeof(double));
+	C = malloc(a * b * sizeof(double));
+	A = malloc(a * c * sizeof(double));
+	B = malloc(c * b * sizeof(double));
 
-	if (!C || !A || !B)
+	if(!C || !A || !B)
 		errx(1, "calloc");
 
 	for(i = 0; i < a * c; ++i)
