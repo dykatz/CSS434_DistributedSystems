@@ -32,7 +32,7 @@ char *argv0;
 int
 main(int argc, char *argv[])
 {
-	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10;
+	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10, i, j, k;
 
 	ARGBEGIN{
 	case 'a':
@@ -63,10 +63,10 @@ main(int argc, char *argv[])
 
 	srand48(time(0));
 
-	for(; a < A; ++a){
-		for(; b < B; ++b){
-			for(; c < C; ++c)
-				testmatmul(a, b, c);
+	for(i = a; i < A; ++i){
+		for(j = b; j < B; ++j){
+			for(k = c; k < C; ++k)
+				testmatmul(i, j, k);
 		}
 	}
 }
@@ -106,9 +106,9 @@ deviceinfo(void)
 
 		printf("\n"
 			"Device %d: %s: %d.%d\n"
-			"Global memory:     %dmb\n"
-			"Shared memory:     %dkb\n"
-			"Const memory:      %dkb\n"
+			"Global memory:     %zumb\n"
+			"Shared memory:     %zukb\n"
+			"Const memory:      %zukb\n"
 			"Block registers:   %d\n"
 			"Warp size:         %d\n"
 			"Threads per block: %d\n"
