@@ -126,19 +126,19 @@ deviceinfo(void)
 	exit(0);
 }
 
-void
-matmul(double *M, double *X, double *Y, int a, int b, int c)
+__global __ void
+matmul(double *M, double *X, double *Y, int b, int c)
 {
-	int i, j, k;
+	int i = blockIdx.y * blockDim.y + threadIdx.y;
+	int j = blockIdx.x * blockDim.x + threadIdx.x;
+	
 
-	for(i = 0; i < a; ++i){
-		for(j = 0; j < b; ++j){
-			M[i*b + j] = 0;
+	int k;
+	M[i*b + j] = 0;
 
-			for(k = 0; k < c; ++k)
-				M[i*b + j] += Y[k*b + j] * X[i*c + k];
-		}
-	}
+	for(k = 0; k < c; ++k)
+		M[i*b + j] += Y[k*b + j] * X[i*c + k];
+	
 }
 
 void
@@ -169,6 +169,7 @@ void
 testmatmul(int a, int b, int c)
 {
 	double *M, *X, *Y;
+	double *d_M, *d_X, *d_Y;
 
 	M = (double *)malloc(a * b * sizeof(double));
 	X = (double *)malloc(a * c * sizeof(double));
@@ -177,9 +178,22 @@ testmatmul(int a, int b, int c)
 	if(!M || !X || !Y)
 		err(1, "malloc");
 
+	cudaMalloc(&d_M, a * b * sizeof(double));
+	cudaMalloc(&d_X, a * c * sizeof(double));
+	cudaMalloc(&d_Y, c * b * sizeof(double));
+
 	randmat(X, a, c);
 	randmat(Y, c, b);
-	matmul(M, X, Y, a, b, c);
+
+	cudaMemcpy(d_X, X, a * c * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_Y, Y, c * b * sizeof(double), cudaMemcpyHostToDevice);
+
+	int N = a * b;
+	int gridsize = 1;
+	int blocksize = a*b;
+	matmul<<< gridsize, blocksize >>>(M, X, Y, a, b, c);
+
+	cudaMemcpy(M, d_M, a * b * sizeof(double), cudaMemcpyDeviceToHost);
 
 	printmat(X, a, c);
 	printf("*\n");
@@ -191,4 +205,7 @@ testmatmul(int a, int b, int c)
 	free(M);
 	free(X);
 	free(Y);
+	cudaFree(d_M);
+	cudaFree(d_X);
+	cudaFree(d_Y);
 }
