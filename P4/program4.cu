@@ -148,7 +148,7 @@ matmulnaive(double *M, double *X, double *Y, int b, int c)
 __global__ void
 matmulopt(double *M, double *X, double *Y, int c)
 {
-	int i = threadIdx.x, j = threadIdx.y, b = threadDim.y;
+	int i = threadIdx.x, j = threadIdx.y, b = blockDim.y;
 	int k;
 
 	M[i*b + j] = 0;
