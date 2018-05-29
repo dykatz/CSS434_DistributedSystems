@@ -13,10 +13,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <err.h>
+
+#ifdef __MACH__
+#	include <mach/clock.h>
+#	include <mach/mach.h>
+#endif
 
 #include "arg.h"
 
@@ -26,6 +32,7 @@ __global__ void matmulnaive(double *, double *, double *, int, int);
 __global__ void matmulopt(double *, double *, double *, int, int);
 void randmat(double *, int, int);
 void printmat(double *, int, int);
+void monotonictime(struct timespec *);
 void testmatmul(int, int, int, bool, int);
 
 char *argv0;
@@ -187,10 +194,29 @@ printmat(double *M, int a, int b)
 }
 
 void
+monotonictime(struct timespec *ts)
+{
+#ifdef __MACH__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+
+	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+
+	ts->tv_sec = mts.tv_sec;
+	ts->tv_nsec = mts.tv_nsec;
+#else
+	clock_gettime(CLOCK_MONOTONIC, ts);
+#endif
+}
+
+void
 testmatmul(int a, int b, int c, bool naive, int tile)
 {
 	double *M, *X, *Y;
 	double *d_M, *d_X, *d_Y;
+	struct timespec start, stop;
 
 	if(!naive && (a % tile || b % tile || c % tile))
 		return;
@@ -209,6 +235,8 @@ testmatmul(int a, int b, int c, bool naive, int tile)
 	cudaMalloc(&d_X, a * c * sizeof(double));
 	cudaMalloc(&d_Y, c * b * sizeof(double));
 
+	monotonictime(&start);
+
 	cudaMemcpy(d_X, X, a * c * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_Y, Y, c * b * sizeof(double), cudaMemcpyHostToDevice);
 
@@ -219,6 +247,8 @@ testmatmul(int a, int b, int c, bool naive, int tile)
 
 	cudaMemcpy(M, d_M, a * b * sizeof(double), cudaMemcpyDeviceToHost);
 
+	monotonictime(&stop);
+
 	cudaFree(d_M);
 	cudaFree(d_X);
 	cudaFree(d_Y);
@@ -228,7 +258,8 @@ testmatmul(int a, int b, int c, bool naive, int tile)
 	printmat(Y, c, b);
 	printf("=\n");
 	printmat(M, a, b);
-	printf("~~~~~~~~~~~~~~~~~~~~~\n");
+	printf("This operation took %f seconds\n~~~~~~~~~~~~~~~~~~~~~\n",
+		(stop.tv_sec-start.tv_sec) + 1e-9*(stop.tv_nsec-start.tv_nsec));
 
 	free(M);
 	free(X);

@@ -13,10 +13,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <err.h>
+
+#ifdef __MACH__
+#	include <mach/clock.h>
+#	include <mach/mach.h>
+#endif
 
 #include "arg.h"
 
@@ -24,6 +30,7 @@ void usage(int);
 void matmul(double *, double *, double *, int, int, int);
 void randmat(double *, int, int);
 void printmat(double *, int, int);
+void monotonictime(struct timespec *);
 void testmatmul(int, int, int);
 
 char *argv0;
@@ -123,27 +130,50 @@ printmat(double *M, int a, int b)
 }
 
 void
+monotonictime(struct timespec *ts)
+{
+#ifdef __MACH__
+	clock_serv_t cclock;
+	mach_timespec_t mts;
+
+	host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+
+	ts->tv_sec = mts.tv_sec;
+	ts->tv_nsec = mts.tv_nsec;
+#else
+	clock_gettime(CLOCK_MONOTONIC, ts);
+#endif
+}
+
+void
 testmatmul(int a, int b, int c)
 {
 	double *M, *X, *Y;
+	struct timespec start, stop;
 
-	M = (double *)malloc(a * b * sizeof(double));
-	X = (double *)malloc(a * c * sizeof(double));
-	Y = (double *)malloc(c * b * sizeof(double));
+	M = malloc(a * b * sizeof(double));
+	X = malloc(a * c * sizeof(double));
+	Y = malloc(c * b * sizeof(double));
 
 	if(!M || !X || !Y)
 		err(1, "malloc");
 
 	randmat(X, a, c);
 	randmat(Y, c, b);
+
+	monotonictime(&start);
 	matmul(M, X, Y, a, b, c);
+	monotonictime(&stop);
 
 	printmat(X, a, c);
 	printf("*\n");
 	printmat(Y, c, b);
 	printf("=\n");
 	printmat(M, a, b);
-	printf("~~~~~~~~~~~~~~~~~~~~~\n");
+	printf("This operation took %f seconds\n~~~~~~~~~~~~~~~~~~~~~\n",
+		(stop.tv_sec-start.tv_sec) + 1e-9*(stop.tv_nsec-start.tv_nsec));
 
 	free(M);
 	free(X);
