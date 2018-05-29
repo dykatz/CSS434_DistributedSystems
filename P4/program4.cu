@@ -126,8 +126,8 @@ deviceinfo(void)
 	exit(0);
 }
 
-__global __ void
-matmul(double *M, double *X, double *Y, int b, int c)
+__global__ void
+matmul_opt(double *M, double *X, double *Y, int b, int c)
 {
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -140,6 +140,22 @@ matmul(double *M, double *X, double *Y, int b, int c)
 		M[i*b + j] += Y[k*b + j] * X[i*c + k];
 	
 }
+
+__global__ void
+matmul_opt(double *M, double *X, double *Y, int b, int c)
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y;
+	int j = blockIdx.x * blockDim.x + threadIdx.x;
+	
+
+	int k;
+	M[i*b + j] = 0;
+
+	for(k = 0; k < c; ++k)
+		M[i*b + j] += Y[k*b + j] * X[i*c + k];
+	
+}
+
 
 void
 randmat(double *M, int a, int b)
