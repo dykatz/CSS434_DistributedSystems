@@ -142,7 +142,7 @@ matmul_opt(double *M, double *X, double *Y, int b, int c)
 }
 
 __global__ void
-matmul_opt(double *M, double *X, double *Y, int b, int c)
+matmul(double *M, double *X, double *Y, int b, int c)
 {
 	int i = blockIdx.y * blockDim.y + threadIdx.y;
 	int j = blockIdx.x * blockDim.x + threadIdx.x;
