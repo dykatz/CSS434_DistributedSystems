@@ -22,10 +22,11 @@
 
 void usage(int);
 void deviceinfo(void);
-__global__ void matmul(double *, double *, double *, int, int);
+__global__ void matmulnaive(double *, double *, double *, int, int);
+__global__ void matmulopt(double *, double *, double *, int);
 void randmat(double *, int, int);
 void printmat(double *, int, int);
-void testmatmul(int, int, int);
+void testmatmul(int, int, int, bool);
 
 char *argv0;
 
@@ -33,6 +34,7 @@ int
 main(int argc, char *argv[])
 {
 	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10, i, j, k;
+	bool naive = false;
 
 	ARGBEGIN{
 	case 'a':
@@ -53,6 +55,9 @@ main(int argc, char *argv[])
 	case 'C':
 		C = atoi(EARGF(usage(1)));
 		break;
+	case 'n':
+		naive = true;
+		break;
 	case 'D':
 		deviceinfo();
 	case 'h':
@@ -66,7 +71,7 @@ main(int argc, char *argv[])
 	for(i = a; i < A; ++i){
 		for(j = b; j < B; ++j){
 			for(k = c; k < C; ++k)
-				testmatmul(i, j, k);
+				testmatmul(i, j, k, naive);
 		}
 	}
 }
@@ -75,11 +80,12 @@ void
 usage(int r)
 {
 	fprintf(r ? stderr : stdout,
-		"usage: %s [-a a] [-b b] [-c c] [-A A] [-B B] [-C C]\n"
+		"usage: %s [-n] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C]\n"
 		"       %s [-D]\n"
 		"       %s [-h]\n\n"
 		" a, b, c = the minimum value of a matrix dimension (def: 2)\n"
 		" A, B, C = the maximum value of a matrix dimension (def: 10)\n"
+		" n       = naive MM implementation? (def: no)\n"
 		" D       = show CUDA device information\n"
 		" h       = show this message\n\n"
 		" - The resulting matrix is A x B\n"
@@ -127,10 +133,22 @@ deviceinfo(void)
 }
 
 __global__ void
-matmul(double *M, double *X, double *Y, int b, int c)
+matmulnaive(double *M, double *X, double *Y, int b, int c)
 {
-	int i = blockIdx.y * blockDim.y + threadIdx.y;
-	int j = blockIdx.x * blockDim.x + threadIdx.x;
+	int i = threadIdx.x / b;
+	int j = threadIdx.x % b;
+	int k;
+
+	M[i*b + j] = 0;
+
+	for(k = 0; k < c; ++k)
+		M[i*b + j] += Y[k*b + j] * X[i*c + k];
+}
+
+__global__ void
+matmulopt(double *M, double *X, double *Y, int c)
+{
+	int i = threadIdx.x, j = threadIdx.y, b = threadDim.y;
 	int k;
 
 	M[i*b + j] = 0;
@@ -164,7 +182,7 @@ printmat(double *M, int a, int b)
 }
 
 void
-testmatmul(int a, int b, int c)
+testmatmul(int a, int b, int c, bool naive)
 {
 	double *M, *X, *Y;
 	double *d_M, *d_X, *d_Y;
@@ -186,8 +204,10 @@ testmatmul(int a, int b, int c)
 	cudaMemcpy(d_X, X, a * c * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_Y, Y, c * b * sizeof(double), cudaMemcpyHostToDevice);
 
-	int blocksize = a * b;
-	matmul<<<1, blocksize>>>(M, X, Y, b, c);
+	if(naive)
+		matmulnaive<<<1, a * b>>>(M, X, Y, b, c);
+	else
+		matmulopt<<<1, dim3(a, b)>>>(M, X, Y, c);
 
 	cudaMemcpy(M, d_M, a * b * sizeof(double), cudaMemcpyDeviceToHost);
 
