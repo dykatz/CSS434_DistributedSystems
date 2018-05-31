@@ -33,14 +33,14 @@ __global__ void matmulopt(double *, double *, double *, int, int);
 void randmat(double *, int, int);
 void printmat(double *, int, int);
 void monotonictime(struct timespec *);
-void testmatmul(int, int, int, bool, int);
+void testmatmul(int, int, int, bool, int, int);
 
 char *argv0;
 
 int
 main(int argc, char *argv[])
 {
-	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10, tile = 8, i, j, k;
+	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10, tx = 8, ty = 8, i, j, k;
 	bool naive = false;
 
 	ARGBEGIN{
@@ -65,8 +65,11 @@ main(int argc, char *argv[])
 	case 'n':
 		naive = true;
 		break;
+	case 's':
+		tx = atoi(EARGF(usage(1)));
+		break;
 	case 't':
-		tile = atoi(EARGF(usage(1)));
+		ty = atoi(EARGF(usage(1)));
 		break;
 	case 'D':
 		deviceinfo();
@@ -81,7 +84,7 @@ main(int argc, char *argv[])
 	for(i = a; i < A; ++i){
 		for(j = b; j < B; ++j){
 			for(k = c; k < C; ++k)
-				testmatmul(i, j, k, naive, tile);
+				testmatmul(i, j, k, naive, tx, ty);
 		}
 	}
 }
@@ -90,13 +93,13 @@ void
 usage(int r)
 {
 	fprintf(r ? stderr : stdout,
-		"usage: %s [-n] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C] [-t tile]\n"
+		"usage: %s [-n] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C] [-s s] [-t t]\n"
 		"       %s [-D]\n"
 		"       %s [-h]\n\n"
 		" a, b, c = the minimum value of a matrix dimension (def: 2)\n"
 		" A, B, C = the maximum value of a matrix dimension (def: 10)\n"
 		" n       = naive MM implementation? (def: no)\n"
-		" t       = size of a tile (non-naive implementation) (def: 8)\n"
+		" s, t    = (x, y) size of a tile (non-naive implementation) (def: 8)\n"
 		" D       = show CUDA device information\n"
 		" h       = show this message\n\n"
 		" - The resulting matrix is A x B\n"
@@ -212,13 +215,13 @@ monotonictime(struct timespec *ts)
 }
 
 void
-testmatmul(int a, int b, int c, bool naive, int tile)
+testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 {
 	double *M, *X, *Y;
 	double *d_M, *d_X, *d_Y;
 	struct timespec start, stop;
 
-	if(!naive && (a % tile || b % tile || c % tile))
+	if(!naive && (a % tx || b % ty))
 		return;
 
 	M = (double *)malloc(a * b * sizeof(double));
@@ -243,7 +246,7 @@ testmatmul(int a, int b, int c, bool naive, int tile)
 	if(naive)
 		matmulnaive<<<1, a * b>>>(M, X, Y, b, c);
 	else
-		matmulopt<<<dim3(a/tile, b/tile), dim3(tile, tile)>>>(M, X, Y, b, c);
+		matmulopt<<<dim3(a/tx, b/ty), dim3(tx, ty)>>>(M, X, Y, b, c);
 
 	cudaMemcpy(M, d_M, a * b * sizeof(double), cudaMemcpyDeviceToHost);
 
