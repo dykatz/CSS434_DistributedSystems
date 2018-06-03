@@ -136,7 +136,8 @@ deviceinfo(void)
 			"Threads per block:       %d\n"
 			"Maximum block size:      [%d, %d, %d]\n"
 			"Maximum grid size:       [%d, %d, %d]\n"
-			"Clock rate:              %d kHz\n",
+			"Clock rate:              %d kHz\n"
+			"Multiprocessor Count:    %d\n",
 			i, properties.name, properties.major, properties.minor,
 			properties.totalGlobalMem / mb, properties.sharedMemPerBlock / kb,
 			properties.totalConstMem / kb, properties.regsPerBlock,
@@ -144,7 +145,7 @@ deviceinfo(void)
 			properties.maxThreadsDim[0], properties.maxThreadsDim[1],
 			properties.maxThreadsDim[2], properties.maxGridSize[0],
 			properties.maxGridSize[1], properties.maxGridSize[2],
-			properties.clockRate);
+			properties.clockRate, properties.multiProcessorCount);
 	}
 
 	exit(0);
