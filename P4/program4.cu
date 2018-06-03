@@ -150,29 +150,25 @@ deviceinfo(void)
 __global__ void
 matmulnaive(double *M, double *X, double *Y, int b, int c)
 {
-	int i = threadIdx.x / b;
-	int j = threadIdx.x % b;
-	int k;
-
-	M[i*b + j] = 0;
+	int i = threadIdx.x / b, j = threadIdx.x % b, k;
+	double r = 0.0;
 
 	for(k = 0; k < c; ++k)
-		M[i*b + j] += Y[k*b + j] * X[i*c + k];
+		r += Y[k*b + j] * X[i*c + k];
+
+	M[i*b + j] = r;
 }
 
 __global__ void
 matmulopt(double *M, double *X, double *Y, int b, int c)
 {
-	extern __shared__ double shared[];
 	const int tx = blockDim.x, ty = blockDim.y;
 	const int i = threadIdx.x + blockIdx.x*blockDim.x;
 	const int j = threadIdx.y + blockIdx.y*blockDim.y;
-
-	double *s_X = shared;
-	double *s_Y = shared + c*tx;
-
 	int k;
-	double r = 0.0;
+
+	extern __shared__ double shared[];
+	double r = 0.0, *s_X = shared, *s_Y = shared + c*tx;
 
 	for(k = threadIdx.y; k < c; k += ty)
 		s_X[threadIdx.x*c + k] = X[i*c + k];
