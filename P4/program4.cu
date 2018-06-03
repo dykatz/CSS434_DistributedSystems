@@ -33,6 +33,7 @@ __global__ void matmulopt(double *, double *, double *, int, int);
 void randmat(double *, int, int);
 void printmat(double *, int, int);
 void monotonictime(struct timespec *);
+void printflops(struct timespec *, struct timespec *, int, int, int);
 void testmatmul(int, int, int, bool, int, int);
 
 char *argv0;
@@ -227,6 +228,20 @@ monotonictime(struct timespec *ts)
 }
 
 void
+printflops(struct timespec *start, struct timespec *stop, int a, int b, int c)
+{
+	int totalops = 2 * a * b * c;
+	double timediff = (stop->tv_sec - start->tv_sec) +
+		1e-9*(stop->tv_nsec - start->tv_nsec);
+
+	printf("\n"
+		"Total floating-point operations = %d\n"
+		"Total compute time = %f seconds\n"
+		"Total flops = %f\n",
+		totalops, timediff, totalops / timediff);
+}
+
+void
 testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 {
 	double *M, *X, *Y;
@@ -277,10 +292,9 @@ testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 	printmat(Y, c, b);
 	printf(" =\n");
 	printmat(M, a, b);
-	printf("\nThis operation took %f seconds "
-		"(%f seconds including memory operations)\n\n",
-		(stop_op.tv_sec-start_op.tv_sec) + 1e-9*(stop_op.tv_nsec-start_op.tv_nsec),
-		(stop.tv_sec-start.tv_sec) + 1e-9*(stop.tv_nsec-start.tv_nsec));
+	printflops(&start_op, &stop_op, a, b, c);
+	printf("Total memory time = %f seconds\n\n",
+		(stop.tv_sec-start.tv_sec) + 1e-9 * (stop.tv_nsec-start.tv_nsec));
 
 	free(M);
 	free(X);
