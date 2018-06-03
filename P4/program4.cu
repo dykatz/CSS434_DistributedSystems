@@ -128,21 +128,23 @@ deviceinfo(void)
 
 		printf("\n"
 			"Device %d: %s: %d.%d\n"
-			"Global memory:     %zumb\n"
-			"Shared memory:     %zukb\n"
-			"Const memory:      %zukb\n"
-			"Block registers:   %d\n"
-			"Warp size:         %d\n"
-			"Threads per block: %d\n"
-			"Max block size:    [%d, %d, %d]\n"
-			"Max grid size:     [%d, %d, %d]\n",
+			"Global memory:           %zu mb\n"
+			"Shared memory per block: %zu kb\n"
+			"Constant memory:         %zu kb\n"
+			"Registers per block:     %d\n"
+			"Warp size:               %d\n"
+			"Threads per block:       %d\n"
+			"Maximum block size:      [%d, %d, %d]\n"
+			"Maximum grid size:       [%d, %d, %d]\n"
+			"Clock rate:              %d kHz\n",
 			i, properties.name, properties.major, properties.minor,
 			properties.totalGlobalMem / mb, properties.sharedMemPerBlock / kb,
 			properties.totalConstMem / kb, properties.regsPerBlock,
 			properties.warpSize, properties.maxThreadsPerBlock,
 			properties.maxThreadsDim[0], properties.maxThreadsDim[1],
 			properties.maxThreadsDim[2], properties.maxGridSize[0],
-			properties.maxGridSize[1], properties.maxGridSize[2]);
+			properties.maxGridSize[1], properties.maxGridSize[2],
+			properties.clockRate);
 	}
 
 	exit(0);
