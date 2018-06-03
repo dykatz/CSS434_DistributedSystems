@@ -106,6 +106,7 @@ usage(int r)
 		" - The left hand matrix is A x C\n"
 		" - The right hand matrix is C x B\n",
 		argv0, argv0, argv0);
+
 	exit(r);
 }
 
@@ -162,14 +163,29 @@ matmulnaive(double *M, double *X, double *Y, int b, int c)
 __global__ void
 matmulopt(double *M, double *X, double *Y, int b, int c)
 {
-	int i = threadIdx.x + blockIdx.x * blockDim.x;
-	int j = threadIdx.y + blockIdx.y * blockDim.y;
-	int k;
+	extern __shared__ double shared[];
+	const int tx = blockDim.x, ty = blockDim.y;
+	const int i = threadIdx.x + blockIdx.x*blockDim.x;
+	const int j = threadIdx.y + blockIdx.y*blockDim.y;
 
-	M[i*b + j] = 0;
+	double *s_X = shared;
+	double *s_Y = shared + c*tx;
+
+	int k;
+	double r = 0.0;
+
+	for(k = threadIdx.y; k < c; k += ty)
+		s_X[threadIdx.x*c + k] = X[i*c + k];
+
+	for(k = threadIdx.x; k < c; k += tx)
+		s_Y[k*ty + threadIdx.y] = Y[k*b + j];
+
+	__syncthreads();
 
 	for(k = 0; k < c; ++k)
-		M[i*b + j] += Y[k*b + j] * X[i*c + k];
+		r += s_Y[k*ty + threadIdx.y] * s_X[threadIdx.x*c + k];
+
+	M[i*b + j] = r;
 }
 
 void
@@ -221,7 +237,7 @@ testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 	double *d_M, *d_X, *d_Y;
 	struct timespec start, stop, start_op, stop_op;
 
-	if(!naive && (a % tx || b % ty))
+	if(!naive && (a % tx || b % ty || c % tx || c % ty))
 		return;
 
 	M = (double *)malloc(a * b * sizeof(double));
@@ -248,7 +264,7 @@ testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 	if(naive)
 		matmulnaive<<<1, a * b>>>(d_M, d_X, d_Y, b, c);
 	else
-		matmulopt<<<dim3(a/tx, b/ty), dim3(tx, ty)>>>(d_M, d_X, d_Y, b, c);
+		matmulopt<<<dim3(a/tx, b/ty), dim3(tx, ty), sizeof(double)*c*(tx+ty)>>>(d_M, d_X, d_Y, b, c);
 
 	monotonictime(&stop_op);
 
