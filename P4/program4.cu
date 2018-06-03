@@ -41,7 +41,7 @@ char *argv0;
 int
 main(int argc, char *argv[])
 {
-	int a = 2, b = 2, c = 2, A = 10, B = 10, C = 10, tx = 8, ty = 8, i, j, k;
+	int a = 2, b = 2, c = 2, A = 20, B = 20, C = 20, tx = 8, ty = 8, i, j, k;
 	bool naive = false;
 
 	ARGBEGIN{
@@ -171,8 +171,13 @@ matmulopt(double *M, double *X, double *Y, int b, int c)
 	const int j = threadIdx.y + blockIdx.y*blockDim.y;
 	int k;
 
+	/* CUDA does not support multiple dynamically allocated shared memory
+	 * arrays by default. This ugly hack works around it. Needs the third
+	 * parameter of the kernel call to work correctly.
+	 */
 	extern __shared__ double shared[];
 	double r = 0.0, *s_X = shared, *s_Y = shared + c*tx;
+	/* __shared__ double s_X[c * tx], s_Y[ty * c]; */
 
 	for(k = threadIdx.y; k < c; k += ty)
 		s_X[threadIdx.x*c + k] = X[i*c + k];
@@ -251,6 +256,7 @@ testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 	double *d_M, *d_X, *d_Y;
 	struct timespec start, stop, start_op, stop_op;
 
+	/* Avoid edge cases where tile size and matrix size don't line up */
 	if(!naive && (a % tx || b % ty || c % tx || c % ty))
 		return;
 
