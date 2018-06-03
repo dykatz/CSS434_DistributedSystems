@@ -219,7 +219,7 @@ testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 {
 	double *M, *X, *Y;
 	double *d_M, *d_X, *d_Y;
-	struct timespec start, stop;
+	struct timespec start, stop, start_op, stop_op;
 
 	if(!naive && (a % tx || b % ty))
 		return;
@@ -234,34 +234,40 @@ testmatmul(int a, int b, int c, bool naive, int tx, int ty)
 	randmat(X, a, c);
 	randmat(Y, c, b);
 
+	monotonictime(&start);
+
 	cudaMalloc(&d_M, a * b * sizeof(double));
 	cudaMalloc(&d_X, a * c * sizeof(double));
 	cudaMalloc(&d_Y, c * b * sizeof(double));
 
-	monotonictime(&start);
-
 	cudaMemcpy(d_X, X, a * c * sizeof(double), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_Y, Y, c * b * sizeof(double), cudaMemcpyHostToDevice);
 
+	monotonictime(&start_op);
+
 	if(naive)
-		matmulnaive<<<1, a * b>>>(M, X, Y, b, c);
+		matmulnaive<<<1, a * b>>>(d_M, d_X, d_Y, b, c);
 	else
-		matmulopt<<<dim3(a/tx, b/ty), dim3(tx, ty)>>>(M, X, Y, b, c);
+		matmulopt<<<dim3(a/tx, b/ty), dim3(tx, ty)>>>(d_M, d_X, d_Y, b, c);
+
+	monotonictime(&stop_op);
 
 	cudaMemcpy(M, d_M, a * b * sizeof(double), cudaMemcpyDeviceToHost);
-
-	monotonictime(&stop);
 
 	cudaFree(d_M);
 	cudaFree(d_X);
 	cudaFree(d_Y);
 
+	monotonictime(&stop);
+
 	printmat(X, a, c);
-	printf("*\n");
+	printf(" *\n");
 	printmat(Y, c, b);
-	printf("=\n");
+	printf(" =\n");
 	printmat(M, a, b);
-	printf("This operation took %f seconds\n~~~~~~~~~~~~~~~~~~~~~\n",
+	printf("\nThis operation took %f seconds "
+		"(%f seconds including memory operations)\n\n",
+		(stop_op.tv_sec-start_op.tv_sec) + 1e-9*(stop_op.tv_nsec-start_op.tv_nsec),
 		(stop.tv_sec-start.tv_sec) + 1e-9*(stop.tv_nsec-start.tv_nsec));
 
 	free(M);

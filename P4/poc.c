@@ -168,11 +168,11 @@ testmatmul(int a, int b, int c)
 	monotonictime(&stop);
 
 	printmat(X, a, c);
-	printf("*\n");
+	printf(" *\n");
 	printmat(Y, c, b);
-	printf("=\n");
+	printf(" =\n");
 	printmat(M, a, b);
-	printf("This operation took %f seconds\n~~~~~~~~~~~~~~~~~~~~~\n",
+	printf("\nThis operation took %f seconds\n\n",
 		(stop.tv_sec-start.tv_sec) + 1e-9*(stop.tv_nsec-start.tv_nsec));
 
 	free(M);
