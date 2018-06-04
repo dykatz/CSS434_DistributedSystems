@@ -34,7 +34,7 @@ void randmat(double *, int, int);
 void printmat(double *, int, int);
 void monotonictime(struct timespec *);
 void printflops(struct timespec *, struct timespec *, int, int, int);
-void testmatmul(int, int, int, bool, bool, int, int);
+void testmatmul(int, int, int, bool, bool, int, int, bool);
 
 char *argv0;
 
@@ -42,7 +42,7 @@ int
 main(int argc, char *argv[])
 {
 	int a = 2, b = 2, c = 2, A = 20, B = 20, C = 20, tx = 8, ty = 8, i, j, k;
-	bool naive = true, optimized = true;
+	bool naive = true, optimized = true, verbose = true;
 
 	ARGBEGIN{
 	case 'a':
@@ -69,6 +69,9 @@ main(int argc, char *argv[])
 	case 'o':
 		optimized = false;
 		break;
+	case 'v':
+		verbose = false;
+		break;
 	case 's':
 		tx = atoi(EARGF(usage(1)));
 		break;
@@ -92,7 +95,7 @@ main(int argc, char *argv[])
 			for(j = b; j < B; ++j){
 				for(k = c; k < C; ++k){
 					testmatmul(i, j, k, true, optimized,
-						tx, ty);
+						tx, ty, verbose);
 				}
 			}
 		}
@@ -108,7 +111,7 @@ main(int argc, char *argv[])
 			for(j = b; j < B; ++j){
 				for(k = c; k < C; ++k){
 					testmatmul(i, j, k, false, optimized,
-						tx, ty);
+						tx, ty, verbose);
 				}
 			}
 		}
@@ -119,13 +122,15 @@ void
 usage(int r)
 {
 	fprintf(r ? stderr : stdout,
-		"usage: %s [-a a] [-b b] [-c c] [-A A] [-B B] [-C C] [-s s] [-t t] [-n] [-o]\n"
+		"usage: %s [-v] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C] "
+			"[-s s] [-t t] [-n] [-o]\n"
 		"       %s [-D]\n"
 		"       %s [-h]\n\n"
 		" a, b, c = the minimum value of a matrix dimension (def: 2)\n"
 		" A, B, C = the maximum value of a matrix dimension (def: 10)\n"
 		" s, t    = (x, y) size of a tile (non-naive implementation) (def: 8)\n"
 		" n, o    = disables a matmul implementation (naive, optimized)\n"
+		" v       = disable verbose output (i.e. the actual matmul data)\n"
 		" D       = show CUDA device information\n"
 		" h       = show this message\n\n"
 		" - The resulting matrix is A x B\n"
@@ -275,7 +280,7 @@ printflops(struct timespec *start, struct timespec *stop, int a, int b, int c)
 }
 
 void
-testmatmul(int a, int b, int c, bool naive, bool optimized, int tx, int ty)
+testmatmul(int a, int b, int c, bool naive, bool optimized, int tx, int ty, bool verbose)
 {
 	double *M, *X, *Y;
 	double *d_M, *d_X, *d_Y;
@@ -322,11 +327,15 @@ testmatmul(int a, int b, int c, bool naive, bool optimized, int tx, int ty)
 	monotonictime(&stop);
 
 	printf("M : [%dx%d] = X : [%dx%d] x Y : [%dx%d]\n\n", a, b, a, c, c, b);
-	printmat(X, a, c);
-	printf(" *\n");
-	printmat(Y, c, b);
-	printf(" =\n");
-	printmat(M, a, b);
+
+	if(verbose){
+		printmat(X, a, c);
+		printf(" *\n");
+		printmat(Y, c, b);
+		printf(" =\n");
+		printmat(M, a, b);
+	}
+
 	printflops(&start_op, &stop_op, a, b, c);
 	printf("Total memory time = %f seconds\n\n",
 		(stop.tv_sec-start.tv_sec) + 1e-9 * (stop.tv_nsec-start.tv_nsec));
