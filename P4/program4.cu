@@ -86,7 +86,7 @@ main(int argc, char *argv[])
 	srand48(time(0));
 
 	if(naive){
-		printf("Naive Matrix Multiplications:\n");
+		printf("Naive Matrix Multiplications:\n\n");
 
 		for(i = a; i < A; ++i){
 			for(j = b; j < B; ++j){
@@ -99,10 +99,10 @@ main(int argc, char *argv[])
 	}
 
 	if(naive && optimized)
-		printf("--------------------------------------------------\n");
+		printf("------------------------------------------------\n\n");
 
 	if(optimized){
-		printf("Optimized Matrix Multiplications:\n");
+		printf("Optimized Matrix Multiplications:\n\n");
 
 		for(i = a; i < A; ++i){
 			for(j = b; j < B; ++j){
@@ -321,6 +321,7 @@ testmatmul(int a, int b, int c, bool naive, bool optimized, int tx, int ty)
 
 	monotonictime(&stop);
 
+	printf("M : [%dx%d] = X : [%dx%d] x Y : [%dx%d]\n\n", a, b, a, c, c, b);
 	printmat(X, a, c);
 	printf(" *\n");
 	printmat(Y, c, b);
