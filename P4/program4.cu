@@ -34,7 +34,7 @@ void randmat(double *, int, int);
 void printmat(double *, int, int);
 void monotonictime(struct timespec *);
 void printflops(struct timespec *, struct timespec *, int, int, int);
-void testmatmul(int, int, int, bool, int, int);
+void testmatmul(int, int, int, bool, bool, int, int);
 
 char *argv0;
 
@@ -42,7 +42,7 @@ int
 main(int argc, char *argv[])
 {
 	int a = 2, b = 2, c = 2, A = 20, B = 20, C = 20, tx = 8, ty = 8, i, j, k;
-	bool naive = false;
+	bool naive = true, optimized = true;
 
 	ARGBEGIN{
 	case 'a':
@@ -64,7 +64,10 @@ main(int argc, char *argv[])
 		C = atoi(EARGF(usage(1)));
 		break;
 	case 'n':
-		naive = true;
+		naive = false;
+		break;
+	case 'o':
+		optimized = false;
 		break;
 	case 's':
 		tx = atoi(EARGF(usage(1)));
@@ -82,10 +85,32 @@ main(int argc, char *argv[])
 
 	srand48(time(0));
 
-	for(i = a; i < A; ++i){
-		for(j = b; j < B; ++j){
-			for(k = c; k < C; ++k)
-				testmatmul(i, j, k, naive, tx, ty);
+	if(naive){
+		printf("Naive Matrix Multiplications:\n");
+
+		for(i = a; i < A; ++i){
+			for(j = b; j < B; ++j){
+				for(k = c; k < C; ++k){
+					testmatmul(i, j, k, true, optimized,
+						tx, ty);
+				}
+			}
+		}
+	}
+
+	if(naive && optimized)
+		printf("--------------------------------------------------\n");
+
+	if(optimized){
+		printf("Optimized Matrix Multiplications:\n");
+
+		for(i = a; i < A; ++i){
+			for(j = b; j < B; ++j){
+				for(k = c; k < C; ++k){
+					testmatmul(i, j, k, false, optimized,
+						tx, ty);
+				}
+			}
 		}
 	}
 }
@@ -94,13 +119,13 @@ void
 usage(int r)
 {
 	fprintf(r ? stderr : stdout,
-		"usage: %s [-n] [-a a] [-b b] [-c c] [-A A] [-B B] [-C C] [-s s] [-t t]\n"
+		"usage: %s [-a a] [-b b] [-c c] [-A A] [-B B] [-C C] [-s s] [-t t] [-n] [-o]\n"
 		"       %s [-D]\n"
 		"       %s [-h]\n\n"
 		" a, b, c = the minimum value of a matrix dimension (def: 2)\n"
 		" A, B, C = the maximum value of a matrix dimension (def: 10)\n"
-		" n       = naive MM implementation? (def: no)\n"
 		" s, t    = (x, y) size of a tile (non-naive implementation) (def: 8)\n"
+		" n, o    = disables a matmul implementation (naive, optimized)\n"
 		" D       = show CUDA device information\n"
 		" h       = show this message\n\n"
 		" - The resulting matrix is A x B\n"
@@ -250,14 +275,14 @@ printflops(struct timespec *start, struct timespec *stop, int a, int b, int c)
 }
 
 void
-testmatmul(int a, int b, int c, bool naive, int tx, int ty)
+testmatmul(int a, int b, int c, bool naive, bool optimized, int tx, int ty)
 {
 	double *M, *X, *Y;
 	double *d_M, *d_X, *d_Y;
 	struct timespec start, stop, start_op, stop_op;
 
 	/* Avoid edge cases where tile size and matrix size don't line up */
-	if(!naive && (a % tx || b % ty || c % tx || c % ty))
+	if(optimized && (a % tx || b % ty || c % tx || c % ty))
 		return;
 
 	M = (double *)malloc(a * b * sizeof(double));
