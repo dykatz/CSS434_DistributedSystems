@@ -11,6 +11,20 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * To run this software, compile it with:
+ * ~> nvcc program4.cu -o p4
+ * ~> ./p4
+ *
+ * By default, this runs every permutation of 8 and 16 for matrix sizes with a
+ * tile size of 8 through both naive and optimized implementations of matrix
+ * multiplication.
+ *
+ * If you just want to see the time statistics for different matrix sizes, run:
+ * ~> ./p4 -v
+ *
+ * To see help and other options, run:
+ * ~> ./p4 -h
  */
 
 #include <sys/time.h>
@@ -38,6 +52,7 @@ void testmatmul(int, int, int, bool, bool, int, int, bool);
 
 char *argv0;
 
+/* Main program entry point. Parse command line args and start test suite */
 int
 main(int argc, char *argv[])
 {
@@ -118,6 +133,7 @@ main(int argc, char *argv[])
 	}
 }
 
+/* Print the program usage information and exit */
 void
 usage(int r)
 {
@@ -141,6 +157,7 @@ usage(int r)
 	exit(r);
 }
 
+/* Print information about the CUDA setup */
 void
 deviceinfo(void)
 {
@@ -181,6 +198,7 @@ deviceinfo(void)
 	exit(0);
 }
 
+/* Naive parallelized version of the matrix multiplication operation */
 __global__ void
 matmulnaive(double *M, double *X, double *Y, int b, int c)
 {
@@ -193,6 +211,7 @@ matmulnaive(double *M, double *X, double *Y, int b, int c)
 	M[i*b + j] = r;
 }
 
+/* Optimized parallelized version of the matrix multiplication operation */
 __global__ void
 matmulopt(double *M, double *X, double *Y, int b, int c)
 {
@@ -223,6 +242,7 @@ matmulopt(double *M, double *X, double *Y, int b, int c)
 	M[i*b + j] = r;
 }
 
+/* Populate a matrix with random double values */
 void
 randmat(double *M, int a, int b)
 {
@@ -232,6 +252,7 @@ randmat(double *M, int a, int b)
 		*i = drand48();
 }
 
+/* Print a matrix to the standard output */
 void
 printmat(double *M, int a, int b)
 {
@@ -247,6 +268,7 @@ printmat(double *M, int a, int b)
 	}
 }
 
+/* Get the system time with nanosecond accuracy */
 void
 monotonictime(struct timespec *ts)
 {
@@ -265,6 +287,7 @@ monotonictime(struct timespec *ts)
 #endif
 }
 
+/* Calculate and print out the statistics for a matmul operation */
 void
 printflops(struct timespec *start, struct timespec *stop, int a, int b, int c)
 {
@@ -279,6 +302,7 @@ printflops(struct timespec *start, struct timespec *stop, int a, int b, int c)
 		totalops, timediff, totalops / timediff);
 }
 
+/* Test the matrix multiplication in a given configuration */
 void
 testmatmul(int a, int b, int c, bool naive, bool optimized, int tx, int ty, bool verbose)
 {
